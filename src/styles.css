@@ -228,6 +228,7 @@ body {
 
 /* Swipe pad: a 3×3 grid of directions, the middle is a touch */
 .swipe {
+  position: relative;
   flex: 3;
   min-height: 0;
   display: grid;
@@ -259,6 +260,59 @@ body {
 .cell[data-pressed] {
   background: var(--accent);
   color: var(--accent-fg);
+}
+
+/* While sliding: a ring at the touch point (inside it is a space) and a line to the finger */
+.swipe[data-active]::before,
+.swipe[data-active]::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.swipe[data-active]::before {
+  left: calc(var(--sx) - var(--reach));
+  top: calc(var(--sy) - var(--reach));
+  width: calc(var(--reach) * 2);
+  height: calc(var(--reach) * 2);
+  box-sizing: border-box;
+  border: 4px dashed var(--muted);
+  border-radius: 50%;
+}
+
+.swipe[data-active]::after {
+  left: var(--sx);
+  top: calc(var(--sy) - 4px);
+  width: var(--len);
+  height: 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: rotate(var(--angle));
+}
+
+/* On lift: the chosen key flashes, an ignored touch shows a dashed outline */
+[data-flash='chosen'] {
+  animation: chosen 300ms ease-out;
+}
+
+@keyframes chosen {
+  from {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+}
+
+[data-flash='ignored'] {
+  outline: 6px dashed var(--muted);
+  outline-offset: -6px;
+}
+
+/* While a key is held, the letter it would add */
+.added {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-radius: 0.1em;
 }
 
 /* Group keyboard: the guessed word, with the part not yet typed dimmed */

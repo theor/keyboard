@@ -3,7 +3,7 @@
 A French keyboard web app for someone in intensive care who can't speak and has limited, imprecise use of one hand. Built for an Android tablet.
 
 - **Phrase screen:** reached from the keyboard. Oui / Non and common needs, spoken aloud when picked.
-- **Keyboard (start screen):** big A–Z keys and word guessing. Guesses ignore accents, so typing `ete` offers `été`. After a space, the guesses show likely next words ("je veux" → que, voir…).
+- **Keyboard (start screen):** big A–Z keys (in ABC or AZERTY order) and word guessing. Guesses ignore accents, so typing `ete` offers `été`. After a space, the guesses show likely next words ("je veux" → que, voir…).
 - **Group keyboard (setting):** 8 big keys (ABC, DEF…) around a space key. One touch per letter, and the word is guessed from the groups, as on old phones. *Épeler* brings back the A–Z keys for words it doesn't know.
 - **Swipe keyboard (setting):** the same groups, picked by sliding from anywhere toward one, so the finger doesn't have to hit a key. A touch without a slide is a space.
 - **Learning:** sentences that are spoken, shown or cleared teach the guesses this person's own words and habits. These stay on the tablet, and settings has a button to forget them.

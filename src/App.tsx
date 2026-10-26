@@ -31,6 +31,8 @@ export function App() {
   // Group keys pressed for the word being guessed, as digits.
   const [keys, setKeys] = useState('');
   const [spelling, setSpelling] = useState(false);
+  // What the key or swipe cell under the finger would type.
+  const [held, setHeld] = useState<{ letter?: string; group?: string }>({});
   const undo = useRef<{ text: string; keys: string }[]>([]);
   const lastLearned = useRef('');
   const [, rerender] = useReducer((n: number) => n + 1, 0);
@@ -65,6 +67,7 @@ export function App() {
           scanning: s.scanning && sc !== 'settings',
           onScanSelect: () => scanner.select(),
           onHoldTooShort: () => showHint('Gardez le doigt sur ⚙ pour ouvrir les réglages'),
+          onPreview: (el) => setHeld({ letter: el?.dataset.letter, group: el?.dataset.group }),
         };
       }),
     [],
@@ -111,10 +114,24 @@ export function App() {
   // On the group keyboard, the first guess is shown in the text as if typed.
   const guess = pendingKeys ? suggestions[0] : undefined;
   const typedPart = guess?.slice(0, typedLength(guess, pendingKeys.length));
-  const pending = pendingKeys
-    ? { typed: typedPart ?? '?'.repeat(pendingKeys.length), rest: guess?.slice(typedPart!.length) ?? '' }
-    : undefined;
   const full = text + (guess ?? '');
+
+  // Shown in the bar: the guess, or while a key is held, what lifting would give.
+  const guessed = (k: string, word?: string) => {
+    if (!word) return { typed: '?'.repeat(k.length - 1), added: k ? '?' : '', rest: '' };
+    const before = typedLength(word, k.length - 1);
+    const after = typedLength(word, k.length);
+    return { typed: word.slice(0, before), added: word.slice(before, after), rest: word.slice(after) };
+  };
+  let pending: { typed: string; added?: string; rest: string } | undefined;
+  if (groups && held.group) {
+    const k = pendingKeys + held.group;
+    pending = guessed(k, predictor.suggestGroups(k, 1, hints())[0]);
+  } else if (!groups && held.letter) {
+    pending = { typed: '', added: held.letter, rest: '' };
+  } else if (pendingKeys) {
+    pending = { typed: typedPart ?? '?'.repeat(pendingKeys.length), rest: guess?.slice(typedPart!.length) ?? '' };
+  }
 
   return (
     <div class="app" ref={rootRef}>
@@ -163,6 +180,7 @@ export function App() {
           ) : (
             <KeyboardScreen
               suggestions={suggestions}
+              layout={settings.layout}
               onGroup={groups ? (g) => edit(text, keys + g) : undefined}
               swipe={settings.keyboard === 'swipe' && !settings.scanning}
               onSwitch={

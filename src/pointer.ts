@@ -7,6 +7,9 @@
 // - on a swipe pad ([data-swipe]), the direction of the slide picks one of 8
 //   cells around the middle, and a touch without a slide picks the middle.
 //   The pad gets a "swipe" event with the cell index (0–8, row by row).
+//   While sliding, the pad's --sx/--sy/--len/--angle/--reach show the slide.
+// Feedback: the key or cell under the finger is passed to onPreview, and on
+// lift it flashes (data-flash="chosen", or "ignored" when the touch is ignored).
 // Elements inside [data-native] (the settings form) get normal browser behaviour.
 
 export interface PointerOptions {
@@ -16,6 +19,17 @@ export interface PointerOptions {
   onScanSelect: () => void;
   // A long-press key was tapped too briefly.
   onHoldTooShort: () => void;
+  // The key or swipe cell that lifting the finger would pick, or null.
+  onPreview: (el: HTMLElement | null) => void;
+}
+
+const FLASH_MS = 300;
+
+function flash(el: HTMLElement, kind: 'chosen' | 'ignored') {
+  el.dataset.flash = kind;
+  setTimeout(() => {
+    if (el.dataset.flash === kind) delete el.dataset.flash;
+  }, FLASH_MS);
 }
 
 let synthetic = false;
@@ -35,9 +49,10 @@ const MIDDLE = 4;
 const DIRECTION_CELLS = [5, 8, 7, 6, 3, 0, 1, 2];
 
 // A slide shorter than a tenth of the pad (at least 40 px) counts as a touch.
+const swipeReach = (pad: HTMLElement) => Math.max(40, 0.1 * Math.min(pad.clientWidth, pad.clientHeight));
+
 function swipeCell(dx: number, dy: number, pad: HTMLElement): number {
-  const min = Math.max(40, 0.1 * Math.min(pad.clientWidth, pad.clientHeight));
-  if (Math.hypot(dx, dy) < min) return MIDDLE;
+  if (Math.hypot(dx, dy) < swipeReach(pad)) return MIDDLE;
   const eighth = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
   return DIRECTION_CELLS[(eighth + 8) % 8];
 }
@@ -70,6 +85,7 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     hovered?.removeAttribute('data-pressed');
     hovered = el;
     hovered?.setAttribute('data-pressed', '');
+    getOpts().onPreview(el);
 
     // Long-press keys fire as soon as the hold time is reached.
     clearTimeout(holdTimer);
@@ -84,17 +100,32 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     }
   };
 
+  const cellEl = (c: number) => pad?.querySelectorAll<HTMLElement>('[data-cell]')[c] ?? null;
+
   const setCell = (c: number) => {
-    const cells = pad?.querySelectorAll('[data-cell]');
-    cells?.[cell]?.removeAttribute('data-pressed');
+    if (c === cell && cellEl(c)?.hasAttribute('data-pressed')) return;
+    cellEl(cell)?.removeAttribute('data-pressed');
     cell = c;
-    cells?.[cell]?.setAttribute('data-pressed', '');
+    cellEl(cell)?.setAttribute('data-pressed', '');
+    getOpts().onPreview(cellEl(cell));
+  };
+
+  const slide = (x: number, y: number) => {
+    if (!pad) return;
+    const dx = x - startX;
+    const dy = y - startY;
+    pad.style.setProperty('--len', `${Math.hypot(dx, dy)}px`);
+    pad.style.setProperty('--angle', `${Math.atan2(dy, dx)}rad`);
+    setCell(swipeCell(dx, dy, pad));
   };
 
   const leavePad = () => {
-    pad?.querySelectorAll('[data-cell]')[cell]?.removeAttribute('data-pressed');
+    if (!pad) return;
+    cellEl(cell)?.removeAttribute('data-pressed');
+    delete pad.dataset.active;
     pad = null;
     cell = MIDDLE;
+    getOpts().onPreview(null);
   };
 
   const down = (e: PointerEvent) => {
@@ -107,7 +138,12 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     if (pad) {
       startX = e.clientX;
       startY = e.clientY;
-      setCell(MIDDLE);
+      const box = pad.getBoundingClientRect();
+      pad.style.setProperty('--sx', `${startX - box.left}px`);
+      pad.style.setProperty('--sy', `${startY - box.top}px`);
+      pad.style.setProperty('--reach', `${swipeReach(pad)}px`);
+      pad.dataset.active = '';
+      slide(startX, startY);
     } else {
       setHover(keyAt(e.clientX, e.clientY));
     }
@@ -115,29 +151,28 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
 
   const move = (e: PointerEvent) => {
     if (e.pointerId !== pointerId || consumed) return;
-    if (pad) setCell(swipeCell(e.clientX - startX, e.clientY - startY, pad));
+    if (pad) slide(e.clientX, e.clientY);
     else setHover(keyAt(e.clientX, e.clientY));
   };
 
   const up = (e: PointerEvent) => {
     if (e.pointerId !== pointerId) return;
-    const el = hovered;
     const swiped = pad;
+    const picked = swiped ? swipeCell(e.clientX - startX, e.clientY - startY, swiped) : MIDDLE;
+    const el = swiped ? cellEl(picked) : hovered;
     setHover(null);
     leavePad();
     pointerId = null;
     if (consumed) return;
 
     const o = getOpts();
-    if (e.timeStamp - downAt < o.minHoldMs || e.timeStamp - lastActivation < o.debounceMs) return;
+    if (e.timeStamp - downAt < o.minHoldMs || e.timeStamp - lastActivation < o.debounceMs) {
+      if (el) flash(el, 'ignored');
+      return;
+    }
     if (o.scanning) {
       lastActivation = e.timeStamp;
       o.onScanSelect();
-      return;
-    }
-    if (swiped) {
-      lastActivation = e.timeStamp;
-      swiped.dispatchEvent(new CustomEvent('swipe', { detail: swipeCell(e.clientX - startX, e.clientY - startY, swiped) }));
       return;
     }
     if (!el) return;
@@ -146,7 +181,9 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
       return;
     }
     lastActivation = e.timeStamp;
-    activate(el);
+    flash(el, 'chosen');
+    if (swiped) swiped.dispatchEvent(new CustomEvent('swipe', { detail: picked }));
+    else activate(el);
   };
 
   const cancel = (e: PointerEvent) => {

@@ -4,6 +4,7 @@ export interface Settings {
   scanning: boolean;
   // Group and swipe keyboards guess the word from letter groups.
   keyboard: 'letters' | 'groups' | 'swipe';
+  layout: 'abc' | 'azerty';
   scanMs: number;
   debounceMs: number;
   minHoldMs: number;
@@ -21,6 +22,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   scanning: false,
   keyboard: 'letters',
+  layout: 'abc',
   scanMs: 1500,
   debounceMs: 400,
   minHoldMs: 0,

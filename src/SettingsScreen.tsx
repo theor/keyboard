@@ -66,6 +66,13 @@ export function SettingsScreen(props: {
             <option value="swipe">Glisser vers un groupe</option>
           </select>
         </label>
+        <label class="field">
+          <span>Ordre des lettres</span>
+          <select value={s.layout} onChange={(e) => set('layout', e.currentTarget.value as Settings['layout'])}>
+            <option value="abc">ABC (7 touches par ligne, plus grandes)</option>
+            <option value="azerty">AZERTY (comme un clavier d’ordinateur)</option>
+          </select>
+        </label>
         <p class="hint">
           Groupes : moins de touches, plus grandes. On touche le groupe de chaque lettre et le mot est
           deviné. Glisser : on pose le doigt n’importe où et on glisse vers le groupe ; toucher sans
