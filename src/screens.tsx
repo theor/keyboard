@@ -28,6 +28,8 @@ export function Key({ label, onPress, class: cls, disabled, hold }: KeyProps) {
 // Text on top of every screen, with speak / show / clear / settings.
 export function MessageBar(props: {
   text: string;
+  showSpeak: boolean;
+  showShow: boolean;
   onSpeak: () => void;
   onShow: () => void;
   onClear: () => void;
@@ -44,8 +46,12 @@ export function MessageBar(props: {
         {props.text}
         <span class="caret" />
       </div>
-      <Key class="bar-key" label="🔊 Parler" onPress={props.onSpeak} disabled={!props.text.trim()} />
-      <Key class="bar-key" label="Montrer" onPress={props.onShow} disabled={!props.text.trim()} />
+      {props.showSpeak && (
+        <Key class="bar-key" label="🔊 Parler" onPress={props.onSpeak} disabled={!props.text.trim()} />
+      )}
+      {props.showShow && (
+        <Key class="bar-key" label="Montrer" onPress={props.onShow} disabled={!props.text.trim()} />
+      )}
       <Key class="bar-key" label="Effacer tout" onPress={props.onClear} disabled={!props.text} />
       <Key class="gear" label="⚙" onPress={props.onSettings} hold={1500} />
     </div>

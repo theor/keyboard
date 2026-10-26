@@ -9,6 +9,8 @@ export interface Settings {
   rate: number;
   voiceURI: string;
   theme: 'dark' | 'light';
+  showSpeak: boolean;
+  showShow: boolean;
   personalWords: string;
   phrases: string;
 }
@@ -22,6 +24,8 @@ export const DEFAULT_SETTINGS: Settings = {
   rate: 0.9,
   voiceURI: '',
   theme: 'dark',
+  showSpeak: true,
+  showShow: true,
   personalWords: '',
   phrases: DEFAULT_PHRASES.join('\n'),
 };

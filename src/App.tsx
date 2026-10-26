@@ -74,6 +74,8 @@ export function App() {
         <div class="screen" data-scan-root={showBig ? undefined : ''}>
           <MessageBar
             text={text}
+            showSpeak={settings.showSpeak}
+            showShow={settings.showShow}
             onSpeak={() => say(text)}
             onShow={() => setShowBig(true)}
             onClear={() => edit('')}

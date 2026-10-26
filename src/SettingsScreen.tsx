@@ -95,6 +95,14 @@ export function SettingsScreen(props: {
           />
           Thème clair
         </label>
+        <label class="check">
+          <input type="checkbox" checked={s.showSpeak} onChange={(e) => set('showSpeak', e.currentTarget.checked)} />
+          Afficher le bouton « Parler »
+        </label>
+        <label class="check">
+          <input type="checkbox" checked={s.showShow} onChange={(e) => set('showShow', e.currentTarget.checked)} />
+          Afficher le bouton « Montrer »
+        </label>
       </section>
 
       <section>
