@@ -6,6 +6,7 @@ export interface Settings {
   debounceMs: number;
   minHoldMs: number;
   fontSize: number;
+  speech: boolean;
   rate: number;
   voiceURI: string;
   theme: 'dark' | 'light';
@@ -21,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
   debounceMs: 400,
   minHoldMs: 0,
   fontSize: 40,
+  speech: true,
   rate: 0.9,
   voiceURI: '',
   theme: 'dark',

@@ -61,7 +61,7 @@ export function App() {
     setText(next);
   };
 
-  const say = (t: string) => speak(t, settings.rate, settings.voiceURI);
+  const say = (t: string) => settings.speech && speak(t, settings.rate, settings.voiceURI);
 
   const personal = lines(settings.personalWords);
   const suggestions = text.trim() === '' ? STARTERS : predictor.suggest(currentWord(text), 4, personal);
@@ -74,7 +74,7 @@ export function App() {
         <div class="screen" data-scan-root={showBig ? undefined : ''}>
           <MessageBar
             text={text}
-            showSpeak={settings.showSpeak}
+            showSpeak={settings.speech && settings.showSpeak}
             showShow={settings.showShow}
             onSpeak={() => say(text)}
             onShow={() => setShowBig(true)}

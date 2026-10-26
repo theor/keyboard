@@ -62,6 +62,10 @@ export function SettingsScreen(props: {
 
       <section>
         <h2>Voix</h2>
+        <label class="check">
+          <input type="checkbox" checked={s.speech} onChange={(e) => set('speech', e.currentTarget.checked)} />
+          Lire le texte à voix haute
+        </label>
         <label class="field">
           <span>Voix</span>
           <select value={s.voiceURI} onChange={(e) => set('voiceURI', e.currentTarget.value)}>
@@ -96,8 +100,13 @@ export function SettingsScreen(props: {
           Thème clair
         </label>
         <label class="check">
-          <input type="checkbox" checked={s.showSpeak} onChange={(e) => set('showSpeak', e.currentTarget.checked)} />
-          Afficher le bouton « Parler »
+          <input
+            type="checkbox"
+            checked={s.speech && s.showSpeak}
+            disabled={!s.speech}
+            onChange={(e) => set('showSpeak', e.currentTarget.checked)}
+          />
+          Afficher le bouton « Parler »{!s.speech && ' (voix coupée)'}
         </label>
         <label class="check">
           <input type="checkbox" checked={s.showShow} onChange={(e) => set('showShow', e.currentTarget.checked)} />
