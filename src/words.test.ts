@@ -7,8 +7,10 @@ import {
   contextWords,
   currentWord,
   deleteWord,
+  groupCode,
   normalize,
   predictor,
+  typedLength,
 } from './words';
 
 describe('normalize', () => {
@@ -49,6 +51,37 @@ describe('Predictor', () => {
   it('knows common French words', () => {
     expect(predictor.suggest('soi', 4)).toContain('soif');
     expect(predictor.suggest('infirmi', 4)).toContain('infirmière');
+  });
+});
+
+describe('group keys', () => {
+  const p = new Predictor(['de', 'été', 'est', 'être', 'et', 'fut']);
+
+  it('turns words into key codes, ignoring accents and apostrophes', () => {
+    expect(groupCode('été')).toBe('161');
+    expect(groupCode("j'")).toBe('3');
+    expect(groupCode('cœur')).toBe('04165');
+  });
+
+  it('puts words of the same length first, then longer ones', () => {
+    expect(p.suggestGroups('16', 4)).toEqual(['et', 'été', 'être', 'fut']);
+    expect(p.suggestGroups('161', 4)).toEqual(['été']);
+    expect(p.suggestGroups('156', 4)).toEqual(['est']);
+  });
+
+  it('uses the same hint order as letters', () => {
+    expect(p.suggestGroups('16', 3, { personal: ['Éva'], learned: ['être'] })).toEqual(['et', 'Éva', 'être']);
+  });
+
+  it('finds common words', () => {
+    expect(predictor.suggestGroups(groupCode('soif'), 4)).toContain('soif');
+    expect(predictor.suggestGroups(groupCode('mal'), 4)).toContain('mal');
+  });
+
+  it('measures the typed part of a word', () => {
+    expect(typedLength('bonjour', 4)).toBe(4);
+    expect(typedLength("j'", 1)).toBe(1);
+    expect(typedLength('cœur', 2)).toBe(2);
   });
 });
 

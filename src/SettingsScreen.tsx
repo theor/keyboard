@@ -54,6 +54,27 @@ export function SettingsScreen(props: {
       </section>
 
       <section>
+        <h2>Clavier</h2>
+        <label class="field">
+          <span>Type de clavier</span>
+          <select
+            value={s.keyboard}
+            onChange={(e) => set('keyboard', e.currentTarget.value as Settings['keyboard'])}
+          >
+            <option value="letters">Lettres (A à Z)</option>
+            <option value="groups">Groupes de lettres (ABC, DEF…)</option>
+            <option value="swipe">Glisser vers un groupe</option>
+          </select>
+        </label>
+        <p class="hint">
+          Groupes : moins de touches, plus grandes. On touche le groupe de chaque lettre et le mot est
+          deviné. Glisser : on pose le doigt n’importe où et on glisse vers le groupe ; toucher sans
+          glisser fait un espace. Dans les deux cas, « Épeler » ramène les lettres pour les mots
+          inconnus. En mode balayage, « Glisser » montre les touches de groupes.
+        </p>
+      </section>
+
+      <section>
         <h2>Balayage</h2>
         <label class="check">
           <input type="checkbox" checked={s.scanning} onChange={(e) => set('scanning', e.currentTarget.checked)} />

@@ -14,6 +14,7 @@ import {
   deleteWord,
   nextWords,
   predictor,
+  typedLength,
 } from './words';
 
 type Screen = 'phrases' | 'keyboard' | 'settings';
@@ -27,7 +28,10 @@ export function App() {
   const [showBig, setShowBig] = useState(false);
   const [hint, setHint] = useState('');
   const hintTimer = useRef(0);
-  const undo = useRef<string[]>([]);
+  // Group keys pressed for the word being guessed, as digits.
+  const [keys, setKeys] = useState('');
+  const [spelling, setSpelling] = useState(false);
+  const undo = useRef<{ text: string; keys: string }[]>([]);
   const lastLearned = useRef('');
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -73,11 +77,12 @@ export function App() {
 
   useEffect(keepScreenOn, []);
 
-  const edit = (next: string) => {
-    if (next === text) return;
-    undo.current.push(text);
+  const edit = (next: string, nextKeys = '') => {
+    if (next === text && nextKeys === keys) return;
+    undo.current.push({ text, keys });
     if (undo.current.length > UNDO_LIMIT) undo.current.shift();
     setText(next);
+    setKeys(nextKeys);
   };
 
   const say = (t: string) => settings.speech && speak(t, settings.rate, settings.voiceURI);
@@ -90,14 +95,26 @@ export function App() {
     nextWords.save();
   };
 
-  const suggestions =
-    text.trim() === ''
+  const groups = settings.keyboard !== 'letters' && !spelling;
+  const pendingKeys = groups ? keys : '';
+  const hints = () => ({
+    personal: lines(settings.personalWords),
+    next: nextWords.candidates(contextWords(text)),
+    learned: nextWords.learnedWords(),
+  });
+  const suggestions = pendingKeys
+    ? predictor.suggestGroups(pendingKeys, 4, hints())
+    : text.trim() === ''
       ? STARTERS
-      : predictor.suggest(currentWord(text), 4, {
-          personal: lines(settings.personalWords),
-          next: nextWords.candidates(contextWords(text)),
-          learned: nextWords.learnedWords(),
-        });
+      : predictor.suggest(currentWord(text), 4, hints());
+
+  // On the group keyboard, the first guess is shown in the text as if typed.
+  const guess = pendingKeys ? suggestions[0] : undefined;
+  const typedPart = guess?.slice(0, typedLength(guess, pendingKeys.length));
+  const pending = pendingKeys
+    ? { typed: typedPart ?? '?'.repeat(pendingKeys.length), rest: guess?.slice(typedPart!.length) ?? '' }
+    : undefined;
+  const full = text + (guess ?? '');
 
   return (
     <div class="app" ref={rootRef}>
@@ -117,18 +134,19 @@ export function App() {
         <div class="screen" data-scan-root={showBig ? undefined : ''}>
           <MessageBar
             text={text}
+            pending={pending}
             showSpeak={settings.speech && settings.showSpeak}
             showShow={settings.showShow}
             onSpeak={() => {
-              learn(text);
-              say(text);
+              learn(full);
+              say(full);
             }}
             onShow={() => {
-              learn(text);
+              learn(full);
               setShowBig(true);
             }}
             onClear={() => {
-              learn(text);
+              learn(full);
               edit('');
             }}
             onSettings={() => setScreen('settings')}
@@ -145,17 +163,36 @@ export function App() {
           ) : (
             <KeyboardScreen
               suggestions={suggestions}
+              onGroup={groups ? (g) => edit(text, keys + g) : undefined}
+              swipe={settings.keyboard === 'swipe' && !settings.scanning}
+              onSwitch={
+                settings.keyboard !== 'letters'
+                  ? () => {
+                      // Keep the typed part of the guess, to finish it letter by letter.
+                      if (groups) edit(text + (typedPart ?? ''));
+                      setSpelling(groups);
+                    }
+                  : undefined
+              }
               onLetter={(c) => edit(text + c)}
-              onSpace={() => edit(addSpace(text))}
+              onSpace={() => {
+                if (!pendingKeys) edit(addSpace(text));
+                else if (guess) edit(applySuggestion(text, guess));
+                else showHint('Aucun mot trouvé : touchez « Épeler » pour l’écrire lettre par lettre');
+              }}
               onSuggestion={(w) => edit(applySuggestion(text, w))}
-              onDeleteLetter={() => edit(text.slice(0, -1))}
-              onDeleteWord={() => edit(deleteWord(text))}
-              onUndo={() => setText(undo.current.pop() ?? '')}
+              onDeleteLetter={() => (pendingKeys ? edit(text, keys.slice(0, -1)) : edit(text.slice(0, -1)))}
+              onDeleteWord={() => (pendingKeys ? edit(text) : edit(deleteWord(text)))}
+              onUndo={() => {
+                const prev = undo.current.pop() ?? { text: '', keys: '' };
+                setText(prev.text);
+                setKeys(prev.keys);
+              }}
               canUndo={undo.current.length > 0}
               onPhrases={() => setScreen('phrases')}
             />
           )}
-          {showBig && <BigText text={text} onClose={() => setShowBig(false)} />}
+          {showBig && <BigText text={full} onClose={() => setShowBig(false)} />}
         </div>
       )}
       {hint && <div class="hint-toast">{hint}</div>}

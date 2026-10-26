@@ -2,6 +2,8 @@ import { DEFAULT_PHRASES } from './phrases';
 
 export interface Settings {
   scanning: boolean;
+  // Group and swipe keyboards guess the word from letter groups.
+  keyboard: 'letters' | 'groups' | 'swipe';
   scanMs: number;
   debounceMs: number;
   minHoldMs: number;
@@ -18,6 +20,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   scanning: false,
+  keyboard: 'letters',
   scanMs: 1500,
   debounceMs: 400,
   minHoldMs: 0,

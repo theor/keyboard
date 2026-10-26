@@ -222,6 +222,55 @@ body {
   font-size: calc(var(--fs) * 0.55);
 }
 
+.group {
+  letter-spacing: 0.1em;
+}
+
+/* Swipe pad: a 3×3 grid of directions, the middle is a touch */
+.swipe {
+  flex: 3;
+  min-height: 0;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  gap: var(--gap);
+  padding: var(--gap);
+  border-radius: var(--radius);
+  background: var(--panel);
+  touch-action: none;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  color: var(--key-fg);
+  font-size: var(--fs);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.cell.middle {
+  color: var(--muted);
+  font-size: calc(var(--fs) * 0.55);
+  letter-spacing: normal;
+}
+
+.cell[data-pressed] {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Group keyboard: the guessed word, with the part not yet typed dimmed */
+.pending {
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+}
+
+.pending .rest {
+  color: var(--muted);
+}
+
 /* Full-screen text */
 
 .overlay {

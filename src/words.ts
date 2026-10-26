@@ -31,11 +31,33 @@ export interface Hints {
 
 const PERSONAL_MAX = 2;
 
+// Group keyboard: one key per group, the word is guessed from the keys pressed.
+export const GROUPS = ['abc', 'def', 'ghi', 'jkl', 'mno', 'pqrs', 'tuv', 'wxyz'];
+
+const GROUP_OF = new Map([...GROUPS.entries()].flatMap(([i, g]) => [...g].map((c) => [c, String(i)])));
+
+// The keys to press for a word, as digits: "été" → "131". Apostrophes are skipped.
+export function groupCode(word: string): string {
+  return [...normalize(word)].map((c) => GROUP_OF.get(c) ?? '').join('');
+}
+
+// How many characters of `word` the first `keys` key presses cover.
+export function typedLength(word: string, keys: number): number {
+  let count = 0;
+  for (let i = 0; i < word.length; i++) {
+    if (count >= keys) return i;
+    count += groupCode(word[i]).length;
+  }
+  return word.length;
+}
+
+type Match = (key: string, code: string) => boolean;
+
 export class Predictor {
-  private entries: { word: string; key: string }[];
+  private entries: { word: string; key: string; code: string }[];
 
   constructor(words: string[]) {
-    this.entries = words.map((word) => ({ word, key: normalize(word) }));
+    this.entries = words.map((word) => ({ word, key: normalize(word), code: groupCode(word) }));
   }
 
   // Order: up to 2 personal words (names), then likely next words for the
@@ -43,23 +65,36 @@ export class Predictor {
   // With nothing typed yet, only next words are offered.
   suggest(prefix: string, n: number, hints: Hints = {}): string[] {
     const p = normalize(prefix);
+    if (!p) return this.pick([() => true], n, { next: hints.next }, prefix, false);
+    return this.pick([(key) => key.startsWith(p)], n, hints, prefix);
+  }
+
+  // Same order, for group key presses: words of exactly that length first,
+  // then longer words that start with them.
+  suggestGroups(keys: string, n: number, hints: Hints = {}): string[] {
+    if (!keys) return this.suggest('', n, hints);
+    return this.pick([(_, code) => code === keys, (_, code) => code.startsWith(keys)], n, hints, '');
+  }
+
+  private pick(passes: Match[], n: number, hints: Hints, typed: string, frequent = true): string[] {
     const out: string[] = [];
     const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-    const ok = (w: string, key: string) =>
-      key.startsWith(p) && !same(w, prefix) && !out.some((o) => same(o, w));
-    const take = (words: string[], limit: number) => {
-      for (const w of words) {
-        if (out.length >= limit) return;
-        if (ok(w, normalize(w))) out.push(w);
-      }
+    const add = (w: string, key: string, code: string, match: Match) => {
+      if (out.length >= n || !match(key, code) || same(w, typed) || out.some((o) => same(o, w))) return false;
+      out.push(w);
+      return true;
     };
-    if (p) take(hints.personal ?? [], Math.min(n, PERSONAL_MAX));
-    take(hints.next ?? [], n);
-    if (!p) return out;
-    take(hints.learned ?? [], n);
-    for (const e of this.entries) {
-      if (out.length >= n) break;
-      if (ok(e.word, e.key)) out.push(e.word);
+    let personal = 0;
+    for (const match of passes) {
+      for (const w of hints.personal ?? []) {
+        if (personal < PERSONAL_MAX && add(w, normalize(w), groupCode(w), match)) personal++;
+      }
+      for (const w of [...(hints.next ?? []), ...(hints.learned ?? [])]) add(w, normalize(w), groupCode(w), match);
+      if (!frequent) continue;
+      for (const e of this.entries) {
+        if (out.length >= n) break;
+        add(e.word, e.key, e.code, match);
+      }
     }
     return out;
   }

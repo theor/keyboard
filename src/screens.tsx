@@ -1,5 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
+import { GROUPS } from './words';
 
 interface KeyProps {
   label: ComponentChildren;
@@ -28,6 +29,7 @@ export function Key({ label, onPress, class: cls, disabled, hold }: KeyProps) {
 // Text on top of every screen, with speak / show / clear / settings.
 export function MessageBar(props: {
   text: string;
+  pending?: { typed: string; rest: string };
   showSpeak: boolean;
   showShow: boolean;
   onSpeak: () => void;
@@ -44,15 +46,22 @@ export function MessageBar(props: {
     <div class="bar" data-scan-row="90">
       <div class="text" ref={ref}>
         {props.text}
-        <span class="caret" />
+        {props.pending && (
+          <span class="pending">
+            {props.pending.typed}
+            <span class="caret" />
+            <span class="rest">{props.pending.rest}</span>
+          </span>
+        )}
+        {!props.pending && <span class="caret" />}
       </div>
       {props.showSpeak && (
-        <Key class="bar-key" label="🔊 Parler" onPress={props.onSpeak} disabled={!props.text.trim()} />
+        <Key class="bar-key" label="🔊 Parler" onPress={props.onSpeak} disabled={!(props.text.trim() || props.pending)} />
       )}
       {props.showShow && (
-        <Key class="bar-key" label="Montrer" onPress={props.onShow} disabled={!props.text.trim()} />
+        <Key class="bar-key" label="Montrer" onPress={props.onShow} disabled={!(props.text.trim() || props.pending)} />
       )}
-      <Key class="bar-key" label="Effacer tout" onPress={props.onClear} disabled={!props.text} />
+      <Key class="bar-key" label="Effacer tout" onPress={props.onClear} disabled={!props.text && !props.pending} />
       <Key class="gear" label="⚙" onPress={props.onSettings} hold={1500} />
     </div>
   );
@@ -89,10 +98,47 @@ export function PhraseScreen(props: {
 }
 
 const LETTER_ROWS = ['ABCDEFG', 'HIJKLMN', 'OPQRSTU', "VWXYZ'_"];
+// Indexes into GROUPS around a space key (-1), so each group is also a
+// direction for the swipe pad.
+const GROUP_ROWS = [
+  [0, 1, 2],
+  [3, -1, 4],
+  [5, 6, 7],
+];
+
+// Slide from anywhere toward a group; a touch without a slide is a space.
+// The pointer code sends a "swipe" event with the grid cell.
+function SwipePad(props: { onGroup: (g: number) => void; onSpace: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const live = useRef(props);
+  live.current = props;
+  useEffect(() => {
+    const onSwipe = (e: Event) => {
+      const g = GROUP_ROWS.flat()[(e as CustomEvent<number>).detail];
+      if (g < 0) live.current.onSpace();
+      else live.current.onGroup(g);
+    };
+    ref.current!.addEventListener('swipe', onSwipe);
+    return () => ref.current?.removeEventListener('swipe', onSwipe);
+  }, []);
+  return (
+    <div class="swipe" data-swipe="" ref={ref}>
+      {GROUP_ROWS.flat().map((g) => (
+        <div class={g < 0 ? 'cell middle' : 'cell'} data-cell="">
+          {g < 0 ? 'espace' : GROUPS[g].toUpperCase()}
+        </div>
+      ))}
+    </div>
+  );
+}
 const SUGGESTION_COUNT = 4;
 
 export function KeyboardScreen(props: {
   suggestions: string[];
+  // Set on the group keyboard; the key to switch shows when either is set.
+  onGroup?: (g: number) => void;
+  swipe?: boolean;
+  onSwitch?: () => void;
   onLetter: (c: string) => void;
   onSpace: () => void;
   onSuggestion: (w: string) => void;
@@ -111,21 +157,40 @@ export function KeyboardScreen(props: {
           <Key class="suggestion" label={w ?? ''} disabled={!w} onPress={() => w && props.onSuggestion(w)} />
         ))}
       </div>
-      {LETTER_ROWS.map((row, i) => (
-        <div class="row" data-scan-row={10 + i}>
-          {[...row].map((c) =>
-            c === '_' ? (
-              <Key class="space" label="espace" onPress={props.onSpace} />
-            ) : (
-              <Key label={c} onPress={() => props.onLetter(c.toLowerCase())} />
-            ),
-          )}
-        </div>
-      ))}
+      {props.onGroup && props.swipe ? (
+        <SwipePad onGroup={props.onGroup} onSpace={props.onSpace} />
+      ) : props.onGroup ? (
+        GROUP_ROWS.map((row, i) => (
+            <div class="row" data-scan-row={10 + i}>
+              {row.map((g) =>
+                g < 0 ? (
+                  <Key class="space" label="espace" onPress={props.onSpace} />
+                ) : (
+                  <Key class="group" label={GROUPS[g].toUpperCase()} onPress={() => props.onGroup!(g)} />
+                ),
+              )}
+            </div>
+          ))
+      ) : (
+        LETTER_ROWS.map((row, i) => (
+            <div class="row" data-scan-row={10 + i}>
+              {[...row].map((c) =>
+                c === '_' ? (
+                  <Key class="space" label="espace" onPress={props.onSpace} />
+                ) : (
+                  <Key label={c} onPress={() => props.onLetter(c.toLowerCase())} />
+                ),
+              )}
+            </div>
+          ))
+      )}
       <div class="row tools" data-scan-row="50">
         <Key class="del" label="⌫ Lettre" onPress={props.onDeleteLetter} />
         <Key class="del" label="⌫ Mot" onPress={props.onDeleteWord} />
         <Key class="nav" label="↶ Annuler" onPress={props.onUndo} disabled={!props.canUndo} />
+        {props.onSwitch && (
+          <Key class="nav" label={props.onGroup ? 'Épeler' : 'Groupes'} onPress={props.onSwitch} />
+        )}
         <Key class="nav" label="Phrases" onPress={props.onPhrases} />
       </div>
     </div>
