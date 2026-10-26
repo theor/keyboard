@@ -8,6 +8,7 @@ A French keyboard web app for someone in intensive care who can't speak and has 
 - **Swipe keyboard (setting):** the same groups, picked by sliding from anywhere toward one, so the finger doesn't have to hit a key. A touch without a slide is a space.
 - **Handwriting (setting):** write one letter at a time with a finger. Each letter is read on the tablet, offline, by a small neural network, and its 4 likeliest readings feed the word guess, so a badly read letter still leads to the right word.
 - **Tablet keyboard (setting):** the text becomes a field typed with Android's own keyboard. Gboard has a handwriting layout (Settings › System › Keyboard › Gboard › Languages › French › Handwriting, then switch with the 🌐 key). Our guesses and buttons stay on screen.
+- **Letter collection:** settings › *Commencer la collecte* asks for letters one at a time and keeps each drawing. Words picked after writing their first letters keep those letters too. Both can be exported to retrain the handwriting model on the patient's own hand.
 - **Learning:** sentences that are spoken, shown or cleared teach the guesses this person's own words and habits. These stay on the tablet, and settings has a button to forget them.
 - **Touch rules for an unsteady hand:** a key fires when the finger lifts, so the user can slide onto the right key. Only the first finger counts, and repeat taps are ignored for a set time.
 - **Scanning mode:** rows, then keys, light up in turn. A touch anywhere picks.
@@ -91,8 +92,25 @@ venv/bin/python scripts/train-letters.py path/to/emnist
 
 It prints the test scores after each epoch and overwrites `src/data/letters.bin`. Then run `npm test`. `src/handwriting.test.ts` draws every letter as strokes, plain and shaky, and checks that it's read. It also checks that the image has about as much ink as EMNIST letters (the training script prints EMNIST's mean, 0.17).
 
+### Fitting the patient's hand
+
+The app keeps handwritten letters, labelled, in two ways:
+
+- **Collection:** settings › *Commencer la collecte* asks for each letter, a to z, in shuffled rounds. It shows what the model read, so it also measures how well the model reads this hand. *Refaire* drops the last letter and asks for it again.
+- **Use:** when the patient picks a word after writing its first letters, each letter is labelled with the word's letter in that place (accents dropped). These cost nothing, but they're only letters the model already had among its 4 readings, and a word picked by mistake gives wrong labels.
+
+Each letter is kept as its raw strokes, not as an image, so a change to `rasterize()` doesn't spoil the old ones. They stay on the tablet (up to 3,000). Settings shows how many there are and how often the model read them right. *Exporter* shares them as `lettres-<date>.json` through Android's share menu (email, Drive…), or downloads the file.
+
+To train on them:
+
+```sh
+venv/bin/python scripts/train-letters.py path/to/emnist lettres-*.json
+```
+
+This starts from the current `letters.bin` and trains for 4 more epochs at a lower rate. Each batch is three quarters EMNIST, so the model keeps reading other hands, and one quarter the patient's letters, each changed at random each time. A fifth of the patient's letters are kept aside, and the script prints the score on them before and after. If it doesn't go up, keep the old `letters.bin` (`git checkout src/data/letters.bin`). `rasterize()` in the script must match the one in `src/handwriting.ts`.
+
 ### Limits
 
 - It reads one letter at a time, not whole words.
 - EMNIST has no accents. If the patient writes `é`, it may be misread, so it's better to write `e` and let the word guesser add the accent.
-- It doesn't learn the patient's own hand.
+- It learns the patient's hand only when retrained on a computer with their letters.

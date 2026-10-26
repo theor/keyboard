@@ -370,6 +370,25 @@ body {
   outline-offset: -4px;
 }
 
+/* Letter collection: the letter asked for, then a pad filling the rest */
+.collect .write {
+  flex: 1;
+}
+
+/* Long labels ("Terminer") in fixed-width keys */
+.collect .key.bar-key {
+  font-size: min(var(--fs), 2.6vw);
+}
+
+.target {
+  font-size: 1.4em;
+}
+
+.collect-info {
+  color: var(--muted);
+  font-size: 0.5em;
+}
+
 /* On lift: the chosen key flashes, an ignored touch shows a dashed outline */
 [data-flash='chosen'] {
   animation: chosen 300ms ease-out;
@@ -526,6 +545,16 @@ body {
   border-radius: 10px;
   background: var(--key);
   color: var(--key-fg);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .btn.primary {

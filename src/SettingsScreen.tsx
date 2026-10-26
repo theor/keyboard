@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
+import { exportSamples, MAX_SAMPLES, samples } from './samples';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { frenchVoices, onVoicesChanged, speak } from './speech';
 
@@ -10,10 +11,12 @@ export function SettingsScreen(props: {
   onClose: () => void;
   learnedCount: number;
   onForget: () => void;
+  onCollect: () => void;
 }) {
   const s = props.settings;
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => props.onChange({ ...s, [k]: v });
 
+  const [, setSampleCount] = useState(samples.count());
   const [voices, setVoices] = useState(frenchVoices);
   useEffect(() => onVoicesChanged(() => setVoices(frenchVoices())), []);
 
@@ -182,6 +185,38 @@ export function SettingsScreen(props: {
         >
           Oublier les mots appris
         </button>
+      </section>
+
+      <section>
+        <h2>Lettres pour l’écriture</h2>
+        <p class="hint">
+          Des lettres écrites par le patient, pour réentraîner la lecture de son écriture sur un ordinateur. Elles
+          viennent de la collecte, et des mots choisis après avoir écrit leurs premières lettres.{' '}
+          {samples.count('prompt')} demandée(s), {samples.count('use')} tirée(s) de mots choisis
+          {samples.count() ? `, ${Math.round(samples.rightFirst() * 100)} % bien lues` : ''}.
+          {samples.count() >= MAX_SAMPLES && ' Mémoire pleine : exportez puis effacez-les.'}
+        </p>
+        <div class="buttons">
+          <button type="button" class="btn primary" onClick={props.onCollect}>
+            Commencer la collecte
+          </button>
+          <button type="button" class="btn" disabled={!samples.count()} onClick={() => exportSamples(samples)}>
+            Exporter
+          </button>
+          <button
+            type="button"
+            class="btn"
+            disabled={!samples.count()}
+            onClick={() => {
+              if (!confirm('Effacer toutes les lettres gardées ?')) return;
+              samples.forget();
+              samples.save();
+              setSampleCount(0);
+            }}
+          >
+            Effacer les lettres
+          </button>
+        </div>
       </section>
 
       <section>

@@ -177,7 +177,7 @@ function SwipePad(props: { onGroup: (g: number) => void; onSpace: () => void }) 
 
 // Write one letter with a finger; it's read once the finger has stayed off
 // the pad for pauseMs. Only the first finger draws.
-function WritingPad(props: { pauseMs: number; onLetter: (strokes: Stroke[]) => void }) {
+export function WritingPad(props: { pauseMs: number; onLetter: (strokes: Stroke[]) => void; hint?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const live = useRef(props);
   live.current = props;
@@ -257,7 +257,7 @@ function WritingPad(props: { pauseMs: number; onLetter: (strokes: Stroke[]) => v
   }, []);
   return (
     <div class="pad">
-      <span class="pad-hint">Écrivez une lettre</span>
+      <span class="pad-hint">{props.hint ?? 'Écrivez une lettre'}</span>
       <canvas data-draw="" ref={ref} />
     </div>
   );

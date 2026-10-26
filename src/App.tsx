@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'preact/hooks';
-import { type LetterReader, loadLetterReader } from './handwriting';
+import { CollectScreen } from './CollectScreen';
+import { type LetterReader, loadLetterReader, type Stroke } from './handwriting';
 import { STARTERS } from './phrases';
 import { activate, installPointer } from './pointer';
 import { Scanner } from './scan';
 import { BigText, KeyboardScreen, MessageBar, PhraseScreen } from './screens';
+import { labelsFor, samples } from './samples';
 import { lines, loadSettings, saveSettings } from './settings';
 import { SettingsScreen } from './SettingsScreen';
 import { speak } from './speech';
@@ -18,7 +20,13 @@ import {
   typedLength,
 } from './words';
 
-type Screen = 'phrases' | 'keyboard' | 'settings';
+type Screen = 'phrases' | 'keyboard' | 'settings' | 'collect';
+
+// Scanning runs on the screens the patient uses, not settings or letter collection.
+const scans = (sc: Screen) => sc === 'phrases' || sc === 'keyboard';
+
+// A handwritten letter's drawing and the reader's first readings of it.
+type Ink = { strokes: Stroke[]; reading: string };
 
 const UNDO_LIMIT = 50;
 
@@ -34,6 +42,13 @@ export function App() {
   // Handwritten letters of the word being guessed, each as its readings, best first.
   const [written, setWritten] = useState<string[]>([]);
   const [reader, setReader] = useState<LetterReader>();
+  // The drawings behind each `written` array, so a picked word can label them.
+  const inks = useMemo(() => new WeakMap<string[], Ink[]>(), []);
+  const inkOf = (w: string[]) => inks.get(w) ?? (w.length ? undefined : []);
+  const withInk = (next: string[], ink?: Ink[]) => {
+    if (ink) inks.set(next, ink);
+    return next;
+  };
   const [spelling, setSpelling] = useState(false);
   // What the key or swipe cell under the finger would type.
   const [held, setHeld] = useState<{ letter?: string; group?: string }>({});
@@ -45,7 +60,7 @@ export function App() {
   // Pointer and scanner callbacks outlive renders, so they read from here.
   const live = useRef({ settings, screen });
   live.current = { settings, screen };
-  const scanning = settings.scanning && screen !== 'settings';
+  const scanning = settings.scanning && scans(screen);
 
   const showHint = (message: string) => {
     setHint(message);
@@ -68,7 +83,7 @@ export function App() {
         return {
           debounceMs: s.debounceMs,
           minHoldMs: s.minHoldMs,
-          scanning: s.scanning && sc !== 'settings',
+          scanning: s.scanning && scans(sc),
           onScanSelect: () => scanner.select(),
           onHoldTooShort: () => showHint('Gardez le doigt sur ⚙ pour ouvrir les réglages'),
           onPreview: (el) => setHeld({ letter: el?.dataset.letter, group: el?.dataset.group }),
@@ -102,6 +117,15 @@ export function App() {
     lastLearned.current = t;
     nextWords.learn(t);
     nextWords.save();
+  };
+
+  // Keeps the written letters, labelled by the word picked for them, to retrain the reader.
+  const keepWritten = (word: string) => {
+    const ink = inkOf(pendingWritten);
+    const labels = labelsFor(word, pendingWritten.length);
+    if (!pendingWritten.length || !labels || ink?.length !== pendingWritten.length) return;
+    ink.forEach((k, i) => samples.add(labels[i], 'use', k.reading, k.strokes));
+    samples.save();
   };
 
   // Handwriting needs a finger on the pad, so scanning falls back to A–Z keys.
@@ -170,7 +194,10 @@ export function App() {
             nextWords.save();
             rerender(0);
           }}
+          onCollect={() => setScreen('collect')}
         />
+      ) : screen === 'collect' ? (
+        <CollectScreen pauseMs={settings.writePauseMs} onClose={() => setScreen('settings')} />
       ) : (
         <div class={system ? 'screen system' : 'screen'} data-scan-root={showBig ? undefined : ''}>
           <MessageBar
@@ -215,12 +242,17 @@ export function App() {
                 writing
                   ? {
                       pauseMs: settings.writePauseMs,
-                      onLetter: (strokes) => reader && edit(text, '', [...written, reader.read(strokes)]),
+                      onLetter: (strokes) => {
+                        if (!reader) return;
+                        const reading = reader.read(strokes);
+                        const ink = inkOf(written);
+                        edit(text, '', withInk([...written, reading], ink && [...ink, { strokes, reading }]));
+                      },
                       readings: written.at(-1) ?? '',
                       // Puts the picked reading first, keeping the others.
                       onPick: (c) => {
                         const last = written.at(-1)!;
-                        edit(text, '', [...written.slice(0, -1), c + last.replace(c, '')]);
+                        edit(text, '', withInk([...written.slice(0, -1), c + last.replace(c, '')], inkOf(written)));
                       },
                     }
                   : undefined
@@ -238,16 +270,22 @@ export function App() {
               onLetter={(c) => edit(text + c)}
               onSpace={() => {
                 if (!count) edit(addSpace(text));
-                else if (guess) edit(applySuggestion(text, guess));
+                else if (guess) {
+                  keepWritten(guess);
+                  edit(applySuggestion(text, guess));
+                }
                 else if (raw) edit(applySuggestion(text, raw));
                 else showHint('Aucun mot trouvé : touchez « Épeler » pour l’écrire lettre par lettre');
               }}
-              onSuggestion={(w) => edit(applySuggestion(text, w))}
+              onSuggestion={(w) => {
+                if (count) keepWritten(w);
+                edit(applySuggestion(text, w));
+              }}
               onDeleteLetter={() =>
                 pendingKeys
                   ? edit(text, keys.slice(0, -1))
                   : pendingWritten.length
-                    ? edit(text, '', written.slice(0, -1))
+                    ? edit(text, '', withInk(written.slice(0, -1), inkOf(written)?.slice(0, -1)))
                     : edit(text.slice(0, -1))
               }
               onDeleteWord={() => (count ? edit(text) : edit(deleteWord(text)))}
