@@ -8,6 +8,8 @@ export function SettingsScreen(props: {
   settings: Settings;
   onChange: (s: Settings) => void;
   onClose: () => void;
+  learnedCount: number;
+  onForget: () => void;
 }) {
   const s = props.settings;
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => props.onChange({ ...s, [k]: v });
@@ -123,6 +125,21 @@ export function SettingsScreen(props: {
         <h2>Mots personnels (une par ligne)</h2>
         <p class="hint">Prénoms, lieux, mots de la famille : ils sont proposés en premier.</p>
         <textarea rows={6} value={s.personalWords} onInput={(e) => set('personalWords', e.currentTarget.value)} />
+      </section>
+
+      <section>
+        <h2>Mots appris</h2>
+        <p class="hint">
+          Les phrases lues, montrées ou effacées servent à mieux deviner le mot suivant.{' '}
+          {props.learnedCount} mot(s) appris.
+        </p>
+        <button
+          type="button"
+          class="btn"
+          onClick={() => confirm('Oublier tous les mots appris ?') && props.onForget()}
+        >
+          Oublier les mots appris
+        </button>
       </section>
 
       <section>

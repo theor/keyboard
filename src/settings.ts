@@ -28,7 +28,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'dark',
   showSpeak: true,
   showShow: true,
-  personalWords: '',
+  personalWords: 'Théo\nMonique',
   phrases: DEFAULT_PHRASES.join('\n'),
 };
 

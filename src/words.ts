@@ -1,5 +1,8 @@
+import rawNext from './data/next-fr.json?raw';
 import rawWords from './data/words-fr.txt?raw';
+import { NextWords } from './nextword';
 import { BOOST_WORDS } from './phrases';
+import { splitSentences, tokenize } from './tokens';
 
 // Lowercase and strip accents, so typing "ete" finds "été".
 export function normalize(s: string): string {
@@ -20,6 +23,14 @@ export function buildWordList(words: string[], boost: string[], rank = 300): str
   return [...words.slice(0, rank), ...extra, ...rest];
 }
 
+export interface Hints {
+  personal?: string[];
+  next?: string[];
+  learned?: string[];
+}
+
+const PERSONAL_MAX = 2;
+
 export class Predictor {
   private entries: { word: string; key: string }[];
 
@@ -27,21 +38,28 @@ export class Predictor {
     this.entries = words.map((word) => ({ word, key: normalize(word) }));
   }
 
-  // Personal words come first, then words by frequency.
-  suggest(prefix: string, n: number, personal: string[] = []): string[] {
+  // Order: up to 2 personal words (names), then likely next words for the
+  // context, then words this person uses, then words by frequency.
+  // With nothing typed yet, only next words are offered.
+  suggest(prefix: string, n: number, hints: Hints = {}): string[] {
     const p = normalize(prefix);
-    if (!p) return [];
     const out: string[] = [];
-    const push = (w: string) => {
-      if (w !== prefix && !out.includes(w)) out.push(w);
+    const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+    const ok = (w: string, key: string) =>
+      key.startsWith(p) && !same(w, prefix) && !out.some((o) => same(o, w));
+    const take = (words: string[], limit: number) => {
+      for (const w of words) {
+        if (out.length >= limit) return;
+        if (ok(w, normalize(w))) out.push(w);
+      }
     };
-    for (const w of personal) {
-      if (out.length >= n) break;
-      if (normalize(w).startsWith(p)) push(w);
-    }
+    if (p) take(hints.personal ?? [], Math.min(n, PERSONAL_MAX));
+    take(hints.next ?? [], n);
+    if (!p) return out;
+    take(hints.learned ?? [], n);
     for (const e of this.entries) {
       if (out.length >= n) break;
-      if (e.key.startsWith(p)) push(e.word);
+      if (ok(e.word, e.key)) out.push(e.word);
     }
     return out;
   }
@@ -57,6 +75,12 @@ export function applySuggestion(text: string, word: string): string {
   return base + word + (word.endsWith("'") ? '' : ' ');
 }
 
+// The last two words before the one being typed, within the current sentence.
+export function contextWords(text: string): string[] {
+  const before = text.slice(0, text.length - currentWord(text).length);
+  return tokenize(splitSentences(before).at(-1) ?? '').slice(-2);
+}
+
 export function deleteWord(text: string): string {
   return text.replace(/\S*\s*$/, '');
 }
@@ -65,6 +89,8 @@ export function addSpace(text: string): string {
   return text === '' || /\s$/.test(text) ? text : text + ' ';
 }
 
-export const predictor = new Predictor(
-  buildWordList(rawWords.split('\n').filter(Boolean), BOOST_WORDS),
-);
+const wordList = buildWordList(rawWords.split('\n').filter(Boolean), BOOST_WORDS);
+
+export const predictor = new Predictor(wordList);
+
+export const nextWords = new NextWords(JSON.parse(rawNext), new Set(wordList), NextWords.loadLearned());

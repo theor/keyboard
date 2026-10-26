@@ -3,7 +3,8 @@
 A French keyboard web app for someone in intensive care who can't speak and has limited, imprecise use of one hand. Built for an Android tablet.
 
 - **Phrase screen:** Oui / Non and common needs, spoken aloud when picked.
-- **Keyboard:** big A–Z keys and word guessing. Guesses ignore accents, so typing `ete` offers `été`.
+- **Keyboard:** big A–Z keys and word guessing. Guesses ignore accents, so typing `ete` offers `été`. After a space, the guesses show likely next words ("je veux" → que, voir…).
+- **Learning:** sentences that are spoken, shown or cleared teach the guesses this person's own words and habits. These stay on the tablet, and settings has a button to forget them.
 - **Touch rules for an unsteady hand:** a key fires when the finger lifts, so the user can slide onto the right key. Only the first finger counts, and repeat taps are ignored for a set time.
 - **Scanning mode:** rows, then keys, light up in turn. A touch anywhere picks.
 - **Settings:** hold the ⚙ for 1.5 s. You can change sizes, timings, the voice, the phrases and personal words (names).
@@ -36,3 +37,11 @@ node scripts/build-words.mjs path/to/fr_50k.txt
 ```
 
 Hospital words are moved up the list. They're defined in `BOOST_WORDS` in `src/phrases.ts`.
+
+## Next-word data
+
+`src/data/next-fr.json` holds the likely next words after one or two words. It's counted from the French sentences of [Tatoeba](https://tatoeba.org) (CC BY 2.0 FR), which are short, everyday sentences. To rebuild it, download `fra_sentences.tsv.bz2` from https://downloads.tatoeba.org/exports/per_language/fra/, unpack it, then run:
+
+```sh
+node scripts/build-nextwords.mjs path/to/fra_sentences.tsv
+```

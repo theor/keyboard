@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'preact/hooks';
 import { STARTERS } from './phrases';
 import { activate, installPointer } from './pointer';
 import { Scanner } from './scan';
@@ -6,7 +6,15 @@ import { BigText, KeyboardScreen, MessageBar, PhraseScreen } from './screens';
 import { lines, loadSettings, saveSettings } from './settings';
 import { SettingsScreen } from './SettingsScreen';
 import { speak } from './speech';
-import { addSpace, applySuggestion, currentWord, deleteWord, predictor } from './words';
+import {
+  addSpace,
+  applySuggestion,
+  contextWords,
+  currentWord,
+  deleteWord,
+  nextWords,
+  predictor,
+} from './words';
 
 type Screen = 'phrases' | 'keyboard' | 'settings';
 
@@ -20,6 +28,8 @@ export function App() {
   const [hint, setHint] = useState('');
   const hintTimer = useRef(0);
   const undo = useRef<string[]>([]);
+  const lastLearned = useRef('');
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Pointer and scanner callbacks outlive renders, so they read from here.
@@ -72,22 +82,55 @@ export function App() {
 
   const say = (t: string) => settings.speech && speak(t, settings.rate, settings.voiceURI);
 
-  const personal = lines(settings.personalWords);
-  const suggestions = text.trim() === '' ? STARTERS : predictor.suggest(currentWord(text), 4, personal);
+  // Learn from a sentence once it's been used: spoken, shown or cleared.
+  const learn = (t: string) => {
+    if (!t.trim() || t === lastLearned.current) return;
+    lastLearned.current = t;
+    nextWords.learn(t);
+    nextWords.save();
+  };
+
+  const suggestions =
+    text.trim() === ''
+      ? STARTERS
+      : predictor.suggest(currentWord(text), 4, {
+          personal: lines(settings.personalWords),
+          next: nextWords.candidates(contextWords(text)),
+          learned: nextWords.learnedWords(),
+        });
 
   return (
     <div class="app" ref={rootRef}>
       {screen === 'settings' ? (
-        <SettingsScreen settings={settings} onChange={setSettings} onClose={() => setScreen('phrases')} />
+        <SettingsScreen
+          settings={settings}
+          onChange={setSettings}
+          onClose={() => setScreen('phrases')}
+          learnedCount={nextWords.learnedCount()}
+          onForget={() => {
+            nextWords.forget();
+            nextWords.save();
+            rerender(0);
+          }}
+        />
       ) : (
         <div class="screen" data-scan-root={showBig ? undefined : ''}>
           <MessageBar
             text={text}
             showSpeak={settings.speech && settings.showSpeak}
             showShow={settings.showShow}
-            onSpeak={() => say(text)}
-            onShow={() => setShowBig(true)}
-            onClear={() => edit('')}
+            onSpeak={() => {
+              learn(text);
+              say(text);
+            }}
+            onShow={() => {
+              learn(text);
+              setShowBig(true);
+            }}
+            onClear={() => {
+              learn(text);
+              edit('');
+            }}
             onSettings={() => setScreen('settings')}
           />
           {screen === 'phrases' ? (

@@ -18,7 +18,6 @@ export const STARTERS = ['je', "j'ai", 'où', 'est-ce que'];
 
 // Hospital words pushed up the suggestion list.
 export const BOOST_WORDS = [
-  'Théo','Monique',
   'douleur', 'mal', 'soif', 'faim', 'aspiration', 'aspirer', 'sonde', 'tuyau', 'tube',
   'infirmière', 'infirmier', 'médecin', 'docteur', 'kiné', 'morphine', 'médicament',
   'nausée', 'vomir', 'respirer', 'respiration', 'étouffe', 'oreiller', 'couverture',

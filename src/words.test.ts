@@ -4,6 +4,7 @@ import {
   addSpace,
   applySuggestion,
   buildWordList,
+  contextWords,
   currentWord,
   deleteWord,
   normalize,
@@ -27,12 +28,22 @@ describe('Predictor', () => {
   });
 
   it('puts personal words first and skips the exact typed word', () => {
-    expect(p.suggest('e', 2, ['Émilie'])).toEqual(['Émilie', 'été']);
+    expect(p.suggest('e', 2, { personal: ['Émilie'] })).toEqual(['Émilie', 'été']);
     expect(p.suggest('et', 3)).toEqual(['été', 'être']);
   });
 
-  it('returns nothing for an empty prefix', () => {
+  it('offers only next words for an empty prefix', () => {
     expect(p.suggest('', 3)).toEqual([]);
+    expect(p.suggest('', 3, { next: ['est', 'de'], personal: ['Émilie'] })).toEqual(['est', 'de']);
+  });
+
+  it('orders personal, next, learned, then frequency words', () => {
+    const hints = { personal: ['Éric', 'Émile', 'Ève'], next: ['être'], learned: ['est'] };
+    expect(p.suggest('e', 5, hints)).toEqual(['Éric', 'Émile', 'être', 'est', 'été']);
+  });
+
+  it('ignores case when removing duplicates', () => {
+    expect(p.suggest('e', 3, { personal: ['Été'], learned: ['été'] })).toEqual(['Été', 'est', 'être']);
   });
 
   it('knows common French words', () => {
@@ -58,6 +69,13 @@ describe('text editing', () => {
     expect(applySuggestion("j'ai so", 'soif')).toBe("j'ai soif ");
     expect(applySuggestion('j', "j'")).toBe("j'");
     expect(applySuggestion("l'infi", 'infirmière')).toBe("l'infirmière ");
+  });
+
+  it('finds the context words before the current word', () => {
+    expect(contextWords("j'ai so")).toEqual(["j'", 'ai']);
+    expect(contextWords('je veux ')).toEqual(['je', 'veux']);
+    expect(contextWords('oui. je ')).toEqual(['je']);
+    expect(contextWords('')).toEqual([]);
   });
 
   it('deletes the last word', () => {
