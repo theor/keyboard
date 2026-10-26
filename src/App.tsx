@@ -17,6 +17,8 @@ export function App() {
   const [screen, setScreen] = useState<Screen>('phrases');
   const [text, setText] = useState('');
   const [showBig, setShowBig] = useState(false);
+  const [hint, setHint] = useState('');
+  const hintTimer = useRef(0);
   const undo = useRef<string[]>([]);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -24,6 +26,12 @@ export function App() {
   const live = useRef({ settings, screen });
   live.current = { settings, screen };
   const scanning = settings.scanning && screen !== 'settings';
+
+  const showHint = (message: string) => {
+    setHint(message);
+    clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => setHint(''), 3000);
+  };
 
   const scanner = useMemo(() => new Scanner(() => live.current.settings.scanMs, activate), []);
 
@@ -42,6 +50,7 @@ export function App() {
           minHoldMs: s.minHoldMs,
           scanning: s.scanning && sc !== 'settings',
           onScanSelect: () => scanner.select(),
+          onHoldTooShort: () => showHint('Gardez le doigt sur ⚙ pour ouvrir les réglages'),
         };
       }),
     [],
@@ -106,6 +115,7 @@ export function App() {
           {showBig && <BigText text={text} onClose={() => setShowBig(false)} />}
         </div>
       )}
+      {hint && <div class="hint-toast">{hint}</div>}
     </div>
   );
 }

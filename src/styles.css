@@ -238,6 +238,22 @@ body {
   white-space: pre-wrap;
 }
 
+.hint-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 10%;
+  transform: translateX(-50%);
+  max-width: 80%;
+  padding: 16px 28px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: calc(var(--fs) * 0.6);
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+
 /* Settings: ordinary scrolling form for caregivers */
 
 .settings {

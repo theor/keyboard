@@ -11,6 +11,8 @@ export interface PointerOptions {
   minHoldMs: number;
   scanning: boolean;
   onScanSelect: () => void;
+  // A long-press key was tapped too briefly.
+  onHoldTooShort: () => void;
 }
 
 let synthetic = false;
@@ -32,6 +34,9 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
   let downAt = 0;
   let lastActivation = -Infinity;
   let hovered: HTMLElement | null = null;
+  let holdTimer = 0;
+  // Set once a long press has fired, so lifting the finger does nothing more.
+  let consumed = false;
 
   const keyAt = (x: number, y: number) => {
     const el = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-key]');
@@ -46,6 +51,18 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     hovered?.removeAttribute('data-pressed');
     hovered = el;
     hovered?.setAttribute('data-pressed', '');
+
+    // Long-press keys fire as soon as the hold time is reached.
+    clearTimeout(holdTimer);
+    const hold = Number(el?.dataset.hold ?? 0);
+    if (el && hold) {
+      holdTimer = window.setTimeout(() => {
+        consumed = true;
+        setHover(null);
+        lastActivation = performance.now();
+        activate(el);
+      }, hold);
+    }
   };
 
   const down = (e: PointerEvent) => {
@@ -53,11 +70,12 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointerId = e.pointerId;
     downAt = e.timeStamp;
+    consumed = false;
     setHover(keyAt(e.clientX, e.clientY));
   };
 
   const move = (e: PointerEvent) => {
-    if (e.pointerId === pointerId) setHover(keyAt(e.clientX, e.clientY));
+    if (e.pointerId === pointerId && !consumed) setHover(keyAt(e.clientX, e.clientY));
   };
 
   const up = (e: PointerEvent) => {
@@ -65,22 +83,20 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     const el = hovered;
     setHover(null);
     pointerId = null;
+    if (consumed) return;
 
     const o = getOpts();
-    const held = e.timeStamp - downAt;
-    const hold = Number(el?.dataset.hold ?? 0);
-    if (el && hold && held >= hold) {
-      lastActivation = e.timeStamp;
-      activate(el);
-      return;
-    }
-    if (held < o.minHoldMs || e.timeStamp - lastActivation < o.debounceMs) return;
+    if (e.timeStamp - downAt < o.minHoldMs || e.timeStamp - lastActivation < o.debounceMs) return;
     if (o.scanning) {
       lastActivation = e.timeStamp;
       o.onScanSelect();
       return;
     }
-    if (!el || hold) return;
+    if (!el) return;
+    if (el.dataset.hold) {
+      o.onHoldTooShort();
+      return;
+    }
     lastActivation = e.timeStamp;
     activate(el);
   };
