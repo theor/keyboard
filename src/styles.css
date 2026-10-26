@@ -143,13 +143,15 @@ body {
   }
 }
 
-.bar-key {
+.key.bar-key {
   flex: 0 0 12%;
-  font-size: calc(var(--fs) * 0.55);
+  /* Labels wrap between words only. */
+  overflow-wrap: normal;
 }
 
 .gear {
   flex: 0 0 5%;
+  min-width: 56px;
   font-size: calc(var(--fs) * 0.6);
   background: transparent;
   color: var(--muted);
@@ -363,7 +365,7 @@ body {
   flex: 1;
 }
 
-.reading.chosen {
+.reading.chosen:not([aria-disabled='true']) {
   outline: 4px solid var(--accent);
   outline-offset: -4px;
 }
@@ -534,4 +536,13 @@ body {
 .btn.danger {
   background: var(--no);
   color: #fff;
+}
+
+/* Portrait: the bar is tall but narrow, so its keys get more width,
+   and their text shrinks with the screen so "Montrer" fits on one line. */
+@media (orientation: portrait) {
+  .key.bar-key {
+    flex-basis: 16%;
+    font-size: min(var(--fs), 3.4vw);
+  }
 }
