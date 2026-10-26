@@ -2,8 +2,8 @@
 
 A French keyboard web app for someone in intensive care who can't speak and has limited, imprecise use of one hand. Built for an Android tablet.
 
-- **Phrase screen:** Oui / Non and common needs, spoken aloud when picked.
-- **Keyboard:** big A–Z keys and word guessing. Guesses ignore accents, so typing `ete` offers `été`. After a space, the guesses show likely next words ("je veux" → que, voir…).
+- **Phrase screen:** reached from the keyboard. Oui / Non and common needs, spoken aloud when picked.
+- **Keyboard (start screen):** big A–Z keys and word guessing. Guesses ignore accents, so typing `ete` offers `été`. After a space, the guesses show likely next words ("je veux" → que, voir…).
 - **Learning:** sentences that are spoken, shown or cleared teach the guesses this person's own words and habits. These stay on the tablet, and settings has a button to forget them.
 - **Touch rules for an unsteady hand:** a key fires when the finger lifts, so the user can slide onto the right key. Only the first finger counts, and repeat taps are ignored for a set time.
 - **Scanning mode:** rows, then keys, light up in turn. A touch anywhere picks.

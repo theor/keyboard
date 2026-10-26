@@ -22,7 +22,7 @@ const UNDO_LIMIT = 50;
 
 export function App() {
   const [settings, setSettings] = useState(loadSettings);
-  const [screen, setScreen] = useState<Screen>('phrases');
+  const [screen, setScreen] = useState<Screen>('keyboard');
   const [text, setText] = useState('');
   const [showBig, setShowBig] = useState(false);
   const [hint, setHint] = useState('');
@@ -105,7 +105,7 @@ export function App() {
         <SettingsScreen
           settings={settings}
           onChange={setSettings}
-          onClose={() => setScreen('phrases')}
+          onClose={() => setScreen('keyboard')}
           learnedCount={nextWords.learnedCount()}
           onForget={() => {
             nextWords.forget();
