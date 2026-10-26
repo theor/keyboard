@@ -3,9 +3,9 @@ export const DEFAULT_PHRASES = [
   "J'ai soif",
   "J'ai chaud",
   "J'ai froid",
-  "Aspiration, s'il vous plaît",
+  // "Aspiration, s'il vous plaît",
   'Changez-moi de position',
-  "J'ai peur",
+  // "J'ai peur",
   'Je veux dormir',
   'Où suis-je ?',
   'Appelez ma famille',
@@ -18,6 +18,7 @@ export const STARTERS = ['je', "j'ai", 'où', 'est-ce que'];
 
 // Hospital words pushed up the suggestion list.
 export const BOOST_WORDS = [
+  'Théo','Monique',
   'douleur', 'mal', 'soif', 'faim', 'aspiration', 'aspirer', 'sonde', 'tuyau', 'tube',
   'infirmière', 'infirmier', 'médecin', 'docteur', 'kiné', 'morphine', 'médicament',
   'nausée', 'vomir', 'respirer', 'respiration', 'étouffe', 'oreiller', 'couverture',
