@@ -4,11 +4,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: './',
+  assetsInclude: ['**/*.bin'],
   plugins: [
     preact(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
+      // letters.bin: the handwriting reader's weights.
+      workbox: { globPatterns: ['**/*.{js,wasm,css,html,bin}'] },
       manifest: {
         name: 'Clavier',
         short_name: 'Clavier',

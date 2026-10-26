@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { frenchVoices, onVoicesChanged, speak } from './speech';
 
-type NumberKey = 'scanMs' | 'debounceMs' | 'minHoldMs' | 'fontSize' | 'rate';
+type NumberKey = 'scanMs' | 'debounceMs' | 'minHoldMs' | 'writePauseMs' | 'fontSize' | 'rate';
 
 export function SettingsScreen(props: {
   settings: Settings;
@@ -64,8 +64,10 @@ export function SettingsScreen(props: {
             <option value="letters">Lettres (A à Z)</option>
             <option value="groups">Groupes de lettres (ABC, DEF…)</option>
             <option value="swipe">Glisser vers un groupe</option>
+            <option value="handwriting">Écrire avec le doigt</option>
           </select>
         </label>
+        {s.keyboard === 'handwriting' && range('writePauseMs', 'Pause avant de lire la lettre', 300, 2500, 100, ' ms')}
         <label class="field">
           <span>Ordre des lettres</span>
           <select value={s.layout} onChange={(e) => set('layout', e.currentTarget.value as Settings['layout'])}>
@@ -78,6 +80,11 @@ export function SettingsScreen(props: {
           deviné. Glisser : on pose le doigt n’importe où et on glisse vers le groupe ; toucher sans
           glisser fait un espace. Dans les deux cas, « Épeler » ramène les lettres pour les mots
           inconnus. En mode balayage, « Glisser » montre les touches de groupes.
+        </p>
+        <p class="hint">
+          Écrire : on écrit une lettre à la fois, et elle est lue dès que le doigt reste levé le temps
+          de la pause. Le mot est deviné, même si des lettres sont mal lues. En mode balayage, ce
+          sont les touches A à Z.
         </p>
       </section>
 

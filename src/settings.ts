@@ -2,12 +2,15 @@ import { DEFAULT_PHRASES } from './phrases';
 
 export interface Settings {
   scanning: boolean;
-  // Group and swipe keyboards guess the word from letter groups.
-  keyboard: 'letters' | 'groups' | 'swipe';
+  // Group and swipe keyboards guess the word from letter groups,
+  // handwriting from letters written with a finger.
+  keyboard: 'letters' | 'groups' | 'swipe' | 'handwriting';
   layout: 'abc' | 'azerty';
   scanMs: number;
   debounceMs: number;
   minHoldMs: number;
+  // How long the finger stays off the pad before the letter is read.
+  writePauseMs: number;
   fontSize: number;
   speech: boolean;
   rate: number;
@@ -26,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   scanMs: 1500,
   debounceMs: 400,
   minHoldMs: 0,
+  writePauseMs: 800,
   fontSize: 40,
   speech: true,
   rate: 0.9,

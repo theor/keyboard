@@ -10,7 +10,8 @@
 //   While sliding, the pad's --sx/--sy/--len/--angle/--reach show the slide.
 // Feedback: the key or cell under the finger is passed to onPreview, and on
 // lift it flashes (data-flash="chosen", or "ignored" when the touch is ignored).
-// Elements inside [data-native] (the settings form) get normal browser behaviour.
+// Elements inside [data-native] (the settings form) get normal browser behaviour,
+// and touches that start in a writing pad ([data-draw]) are left to the pad.
 
 export interface PointerOptions {
   debounceMs: number;
@@ -25,7 +26,7 @@ export interface PointerOptions {
 
 const FLASH_MS = 300;
 
-function flash(el: HTMLElement, kind: 'chosen' | 'ignored') {
+export function flash(el: HTMLElement, kind: 'chosen' | 'ignored') {
   el.dataset.flash = kind;
   setTimeout(() => {
     if (el.dataset.flash === kind) delete el.dataset.flash;
@@ -58,6 +59,7 @@ function swipeCell(dx: number, dy: number, pad: HTMLElement): number {
 }
 
 const isNative = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-native]');
+const isDraw = (t: EventTarget | null) => t instanceof Element && !!t.closest('[data-draw]');
 
 export function installPointer(root: HTMLElement, getOpts: () => PointerOptions): () => void {
   let pointerId: number | null = null;
@@ -129,7 +131,7 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
   };
 
   const down = (e: PointerEvent) => {
-    if (isNative(e.target) || pointerId !== null) return;
+    if (isNative(e.target) || isDraw(e.target) || pointerId !== null) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointerId = e.pointerId;
     downAt = e.timeStamp;

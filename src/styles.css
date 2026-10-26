@@ -291,6 +291,56 @@ body {
   transform: rotate(var(--angle));
 }
 
+/* Handwriting: a pad to write on, and the last letter's readings beside it */
+.write {
+  flex: 3;
+  min-height: 0;
+  display: flex;
+  gap: var(--gap);
+}
+
+.pad {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--key-fg);
+}
+
+.pad canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius);
+  touch-action: none;
+}
+
+.pad-hint {
+  position: absolute;
+  top: 0.4em;
+  left: 0.6em;
+  color: var(--muted);
+  font-size: calc(var(--fs) * 0.5);
+}
+
+.write-side {
+  flex: 0 0 18%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.write-side .key {
+  flex: 1;
+}
+
+.reading.chosen {
+  outline: 4px solid var(--accent);
+  outline-offset: -4px;
+}
+
 /* On lift: the chosen key flashes, an ignored touch shows a dashed outline */
 [data-flash='chosen'] {
   animation: chosen 300ms ease-out;

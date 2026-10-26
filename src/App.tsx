@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'preact/hooks';
+import { type LetterReader, loadLetterReader } from './handwriting';
 import { STARTERS } from './phrases';
 import { activate, installPointer } from './pointer';
 import { Scanner } from './scan';
@@ -30,10 +31,13 @@ export function App() {
   const hintTimer = useRef(0);
   // Group keys pressed for the word being guessed, as digits.
   const [keys, setKeys] = useState('');
+  // Handwritten letters of the word being guessed, each as its readings, best first.
+  const [written, setWritten] = useState<string[]>([]);
+  const [reader, setReader] = useState<LetterReader>();
   const [spelling, setSpelling] = useState(false);
   // What the key or swipe cell under the finger would type.
   const [held, setHeld] = useState<{ letter?: string; group?: string }>({});
-  const undo = useRef<{ text: string; keys: string }[]>([]);
+  const undo = useRef<{ text: string; keys: string; written: string[] }[]>([]);
   const lastLearned = useRef('');
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -80,12 +84,14 @@ export function App() {
 
   useEffect(keepScreenOn, []);
 
-  const edit = (next: string, nextKeys = '') => {
-    if (next === text && nextKeys === keys) return;
-    undo.current.push({ text, keys });
+  const edit = (next: string, nextKeys = '', nextWritten: string[] = []) => {
+    const sameWritten = nextWritten === written || (!nextWritten.length && !written.length);
+    if (next === text && nextKeys === keys && sameWritten) return;
+    undo.current.push({ text, keys, written });
     if (undo.current.length > UNDO_LIMIT) undo.current.shift();
     setText(next);
     setKeys(nextKeys);
+    setWritten(nextWritten);
   };
 
   const say = (t: string) => settings.speech && speak(t, settings.rate, settings.voiceURI);
@@ -98,8 +104,21 @@ export function App() {
     nextWords.save();
   };
 
-  const groups = settings.keyboard !== 'letters' && !spelling;
+  // Handwriting needs a finger on the pad, so scanning falls back to A–Z keys.
+  const canWrite = settings.keyboard === 'handwriting' && !settings.scanning;
+  const canSwitch = settings.keyboard === 'groups' || settings.keyboard === 'swipe' || canWrite;
+  const groups = (settings.keyboard === 'groups' || settings.keyboard === 'swipe') && !spelling;
+  const writing = canWrite && !spelling;
   const pendingKeys = groups ? keys : '';
+  const pendingWritten = writing ? written : [];
+  // Letters (or groups) given for the word being guessed.
+  const count = pendingKeys.length + pendingWritten.length;
+  // The best reading of each written letter, used when no word fits.
+  const raw = pendingWritten.map((w) => w[0]).join('');
+
+  useEffect(() => {
+    if (canWrite) loadLetterReader().then(setReader, () => showHint('Lecture de l’écriture indisponible'));
+  }, [canWrite]);
   const hints = () => ({
     personal: lines(settings.personalWords),
     next: nextWords.candidates(contextWords(text)),
@@ -107,13 +126,15 @@ export function App() {
   });
   const suggestions = pendingKeys
     ? predictor.suggestGroups(pendingKeys, 4, hints())
-    : text.trim() === ''
+    : pendingWritten.length
+      ? predictor.suggestLetters(pendingWritten, 4, hints())
+      : text.trim() === ''
       ? STARTERS
       : predictor.suggest(currentWord(text), 4, hints());
 
-  // On the group keyboard, the first guess is shown in the text as if typed.
-  const guess = pendingKeys ? suggestions[0] : undefined;
-  const typedPart = guess?.slice(0, typedLength(guess, pendingKeys.length));
+  // On the group and handwriting keyboards, the first guess is shown in the text as if typed.
+  const guess = count ? suggestions[0] : undefined;
+  const typedPart = guess?.slice(0, typedLength(guess, count));
   const full = text + (guess ?? '');
 
   // Shown in the bar: the guess, or while a key is held, what lifting would give.
@@ -129,9 +150,10 @@ export function App() {
     pending = guessed(k, predictor.suggestGroups(k, 1, hints())[0]);
   } else if (!groups && held.letter) {
     pending = { typed: '', added: held.letter, rest: '' };
-  } else if (pendingKeys) {
-    pending = { typed: typedPart ?? '?'.repeat(pendingKeys.length), rest: guess?.slice(typedPart!.length) ?? '' };
+  } else if (count) {
+    pending = { typed: typedPart ?? (raw || '?'.repeat(count)), rest: guess?.slice(typedPart!.length) ?? '' };
   }
+
 
   return (
     <div class="app" ref={rootRef}>
@@ -183,28 +205,51 @@ export function App() {
               layout={settings.layout}
               onGroup={groups ? (g) => edit(text, keys + g) : undefined}
               swipe={settings.keyboard === 'swipe' && !settings.scanning}
-              onSwitch={
-                settings.keyboard !== 'letters'
-                  ? () => {
-                      // Keep the typed part of the guess, to finish it letter by letter.
-                      if (groups) edit(text + (typedPart ?? ''));
-                      setSpelling(groups);
+              write={
+                writing
+                  ? {
+                      pauseMs: settings.writePauseMs,
+                      onLetter: (strokes) => reader && edit(text, '', [...written, reader.read(strokes)]),
+                      readings: written.at(-1) ?? '',
+                      // Puts the picked reading first, keeping the others.
+                      onPick: (c) => {
+                        const last = written.at(-1)!;
+                        edit(text, '', [...written.slice(0, -1), c + last.replace(c, '')]);
+                      },
                     }
                   : undefined
               }
+              onSwitch={
+                canSwitch
+                  ? () => {
+                      // Keep the typed part of the guess, to finish it letter by letter.
+                      if (groups || writing) edit(text + (typedPart ?? raw));
+                      setSpelling(groups || writing);
+                    }
+                  : undefined
+              }
+              switchLabel={groups || writing ? 'Épeler' : canWrite ? 'Écrire' : 'Groupes'}
               onLetter={(c) => edit(text + c)}
               onSpace={() => {
-                if (!pendingKeys) edit(addSpace(text));
+                if (!count) edit(addSpace(text));
                 else if (guess) edit(applySuggestion(text, guess));
+                else if (raw) edit(applySuggestion(text, raw));
                 else showHint('Aucun mot trouvé : touchez « Épeler » pour l’écrire lettre par lettre');
               }}
               onSuggestion={(w) => edit(applySuggestion(text, w))}
-              onDeleteLetter={() => (pendingKeys ? edit(text, keys.slice(0, -1)) : edit(text.slice(0, -1)))}
-              onDeleteWord={() => (pendingKeys ? edit(text) : edit(deleteWord(text)))}
+              onDeleteLetter={() =>
+                pendingKeys
+                  ? edit(text, keys.slice(0, -1))
+                  : pendingWritten.length
+                    ? edit(text, '', written.slice(0, -1))
+                    : edit(text.slice(0, -1))
+              }
+              onDeleteWord={() => (count ? edit(text) : edit(deleteWord(text)))}
               onUndo={() => {
-                const prev = undo.current.pop() ?? { text: '', keys: '' };
+                const prev = undo.current.pop() ?? { text: '', keys: '', written: [] };
                 setText(prev.text);
                 setKeys(prev.keys);
+                setWritten(prev.written);
               }}
               canUndo={undo.current.length > 0}
               onPhrases={() => setScreen('phrases')}

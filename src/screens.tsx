@@ -1,5 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
+import type { Stroke } from './handwriting';
+import { flash } from './pointer';
 import { GROUPS } from './words';
 
 interface KeyProps {
@@ -144,6 +146,95 @@ function SwipePad(props: { onGroup: (g: number) => void; onSpace: () => void }) 
     </div>
   );
 }
+
+// Write one letter with a finger; it's read once the finger has stayed off
+// the pad for pauseMs. Only the first finger draws.
+function WritingPad(props: { pauseMs: number; onLetter: (strokes: Stroke[]) => void }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const live = useRef(props);
+  live.current = props;
+  useEffect(() => {
+    const canvas = ref.current!;
+    const ctx = canvas.getContext('2d')!;
+    let strokes: Stroke[] = [];
+    let pointerId: number | null = null;
+    let timer = 0;
+
+    const redraw = () => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = getComputedStyle(canvas).color;
+      ctx.lineWidth = Math.max(6, Math.min(w, h) / 30);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const s of strokes) {
+        ctx.beginPath();
+        ctx.moveTo(s[0].x, s[0].y);
+        for (const p of s) ctx.lineTo(p.x, p.y);
+        if (s.length === 1) ctx.lineTo(s[0].x + 0.1, s[0].y);
+        ctx.stroke();
+      }
+    };
+    const resize = () => {
+      canvas.width = canvas.clientWidth * devicePixelRatio;
+      canvas.height = canvas.clientHeight * devicePixelRatio;
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      redraw();
+    };
+    const at = (e: PointerEvent) => {
+      const box = canvas.getBoundingClientRect();
+      return { x: e.clientX - box.left, y: e.clientY - box.top };
+    };
+
+    const down = (e: PointerEvent) => {
+      if (pointerId !== null) return;
+      pointerId = e.pointerId;
+      canvas.setPointerCapture(e.pointerId);
+      clearTimeout(timer);
+      strokes.push([at(e)]);
+      redraw();
+    };
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      strokes.at(-1)!.push(...(e.getCoalescedEvents?.() ?? [e]).map(at));
+      redraw();
+    };
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = null;
+      timer = window.setTimeout(() => {
+        const letter = strokes;
+        strokes = [];
+        redraw();
+        flash(canvas, 'chosen');
+        live.current.onLetter(letter);
+      }, live.current.pauseMs);
+    };
+
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    canvas.addEventListener('pointerdown', down);
+    canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', up);
+    canvas.addEventListener('pointercancel', up);
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+      canvas.removeEventListener('pointerdown', down);
+      canvas.removeEventListener('pointermove', move);
+      canvas.removeEventListener('pointerup', up);
+      canvas.removeEventListener('pointercancel', up);
+    };
+  }, []);
+  return (
+    <div class="pad">
+      <span class="pad-hint">Écrivez une lettre</span>
+      <canvas data-draw="" ref={ref} />
+    </div>
+  );
+}
+
 const SUGGESTION_COUNT = 4;
 
 export function KeyboardScreen(props: {
@@ -152,7 +243,10 @@ export function KeyboardScreen(props: {
   // Set on the group keyboard; the key to switch shows when either is set.
   onGroup?: (g: number) => void;
   swipe?: boolean;
+  // Set on the handwriting keyboard. `readings`: the last letter's, best first.
+  write?: { pauseMs: number; onLetter: (strokes: Stroke[]) => void; readings: string; onPick: (c: string) => void };
   onSwitch?: () => void;
+  switchLabel?: string;
   onLetter: (c: string) => void;
   onSpace: () => void;
   onSuggestion: (w: string) => void;
@@ -171,7 +265,25 @@ export function KeyboardScreen(props: {
           <Key class="suggestion" label={w ?? ''} disabled={!w} onPress={() => w && props.onSuggestion(w)} />
         ))}
       </div>
-      {props.onGroup && props.swipe ? (
+      {props.write ? (
+        <div class="write">
+          <WritingPad pauseMs={props.write.pauseMs} onLetter={props.write.onLetter} />
+          <div class="write-side">
+            {[0, 1, 2].map((i) => {
+              const c = props.write!.readings[i];
+              return (
+                <Key
+                  class={i === 0 ? 'reading chosen' : 'reading'}
+                  label={c?.toUpperCase() ?? ''}
+                  disabled={!c}
+                  onPress={() => c && props.write!.onPick(c)}
+                />
+              );
+            })}
+            <Key class="space" label="espace" onPress={props.onSpace} />
+          </div>
+        </div>
+      ) : props.onGroup && props.swipe ? (
         <SwipePad onGroup={props.onGroup} onSpace={props.onSpace} />
       ) : props.onGroup ? (
         GROUP_ROWS.map((row, i) => (
@@ -208,7 +320,7 @@ export function KeyboardScreen(props: {
         <Key class="del" label="⌫ Mot" onPress={props.onDeleteWord} />
         <Key class="nav" label="↶ Annuler" onPress={props.onUndo} disabled={!props.canUndo} />
         {props.onSwitch && (
-          <Key class="nav" label={props.onGroup ? 'Épeler' : 'Groupes'} onPress={props.onSwitch} />
+          <Key class="nav" label={props.switchLabel} onPress={props.onSwitch} />
         )}
         <Key class="nav" label="Phrases" onPress={props.onPhrases} />
       </div>

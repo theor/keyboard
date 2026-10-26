@@ -53,6 +53,24 @@ export function typedLength(word: string, keys: number): number {
 
 type Match = (key: string, code: string) => boolean;
 
+const MAX_COST = 3;
+
+// How far down the readings of each written letter a word's letters are, or -1
+// if one isn't there. `exact`: the word has no more letters than were written.
+// Apostrophes and hyphens are skipped.
+function readCost(key: string, written: string[], exact: boolean): number {
+  let cost = 0;
+  let i = 0;
+  for (const c of key) {
+    if (c < 'a' || c > 'z') continue;
+    if (i === written.length) return exact ? -1 : cost;
+    const rank = written[i++].indexOf(c);
+    if (rank < 0) return -1;
+    cost += rank;
+  }
+  return i === written.length ? cost : -1;
+}
+
 export class Predictor {
   private entries: { word: string; key: string; code: string }[];
 
@@ -74,6 +92,18 @@ export class Predictor {
   suggestGroups(keys: string, n: number, hints: Hints = {}): string[] {
     if (!keys) return this.suggest('', n, hints);
     return this.pick([(_, code) => code === keys, (_, code) => code.startsWith(keys)], n, hints, '');
+  }
+
+  // Handwriting: each written letter comes as its readings, best first ("ilt").
+  // Words that use only best readings come first, words of that length before
+  // longer ones; each step down a reading costs one, up to MAX_COST.
+  suggestLetters(written: string[], n: number, hints: Hints = {}): string[] {
+    if (!written.length) return this.suggest('', n, hints);
+    const passes: Match[] = [];
+    for (let c = 0; c <= MAX_COST; c++) {
+      passes.push((key) => readCost(key, written, true) === c, (key) => readCost(key, written, false) === c);
+    }
+    return this.pick(passes, n, hints, '');
   }
 
   private pick(passes: Match[], n: number, hints: Hints, typed: string, frequent = true): string[] {

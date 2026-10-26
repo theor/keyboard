@@ -85,6 +85,28 @@ describe('group keys', () => {
   });
 });
 
+describe('written letters', () => {
+  const p = new Predictor(['de', 'été', 'est', 'être', 'et', 'lit', "j'"]);
+
+  it('prefers best readings, then words of that length', () => {
+    expect(p.suggestLetters(['e', 'tf'], 4)).toEqual(['et', 'été', 'être']);
+    expect(p.suggestLetters(['e', 'st'], 4)).toEqual(['est', 'et', 'été', 'être']);
+  });
+
+  it('lets a less likely reading through', () => {
+    expect(p.suggestLetters(['il', 'i', 't'], 4)).toEqual(['lit']);
+    expect(p.suggestLetters(['ce', 'tl', 'oe'], 4)).toEqual(['été']);
+  });
+
+  it('skips apostrophes', () => {
+    expect(p.suggestLetters(['j'], 4)).toEqual(["j'"]);
+  });
+
+  it('finds common words from clean readings', () => {
+    expect(predictor.suggestLetters(['s', 'o', 'i', 'f'], 4)).toContain('soif');
+  });
+});
+
 describe('buildWordList', () => {
   it('moves low-ranked boost words up', () => {
     expect(buildWordList(['a', 'b', 'c', 'd'], ['d', 'a'], 2)).toEqual(['a', 'b', 'd', 'c']);
