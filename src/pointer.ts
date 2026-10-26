@@ -12,6 +12,7 @@
 // lift it flashes (data-flash="chosen", or "ignored" when the touch is ignored).
 // Elements inside [data-native] (the settings form) get normal browser behaviour,
 // and touches that start in a writing pad ([data-draw]) are left to the pad.
+// Keys don't take focus, so a text field keeps the tablet's keyboard open.
 
 export interface PointerOptions {
   debounceMs: number;
@@ -205,12 +206,17 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     if (!isNative(e.target)) e.preventDefault();
   };
 
+  const keepFocus = (e: MouseEvent) => {
+    if (!isNative(e.target)) e.preventDefault();
+  };
+
   root.addEventListener('pointerdown', down);
   window.addEventListener('pointermove', move);
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', cancel);
   root.addEventListener('click', blockClick, true);
   root.addEventListener('contextmenu', blockMenu);
+  root.addEventListener('mousedown', keepFocus);
   return () => {
     root.removeEventListener('pointerdown', down);
     window.removeEventListener('pointermove', move);
@@ -218,5 +224,6 @@ export function installPointer(root: HTMLElement, getOpts: () => PointerOptions)
     window.removeEventListener('pointercancel', cancel);
     root.removeEventListener('click', blockClick, true);
     root.removeEventListener('contextmenu', blockMenu);
+    root.removeEventListener('mousedown', keepFocus);
   };
 }

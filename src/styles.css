@@ -100,6 +100,33 @@ body {
   white-space: pre-wrap;
 }
 
+/* Tablet keyboard: the text is a field, and takes the room our keys leave */
+.field {
+  box-sizing: border-box;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  outline: 0;
+  resize: none;
+  color: var(--key-fg);
+  font-family: inherit;
+  touch-action: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.field::placeholder {
+  color: var(--muted);
+}
+
+.screen.system .bar {
+  flex: 1;
+}
+
+.screen.system .rows {
+  flex: 0 0 40%;
+}
+
 .caret {
   display: inline-block;
   width: 0.08em;

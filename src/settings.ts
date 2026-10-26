@@ -3,8 +3,9 @@ import { DEFAULT_PHRASES } from './phrases';
 export interface Settings {
   scanning: boolean;
   // Group and swipe keyboards guess the word from letter groups,
-  // handwriting from letters written with a finger.
-  keyboard: 'letters' | 'groups' | 'swipe' | 'handwriting';
+  // handwriting from letters written with a finger. System: the tablet's own
+  // keyboard (Gboard, which has a handwriting layout) in a text field.
+  keyboard: 'letters' | 'groups' | 'swipe' | 'handwriting' | 'system';
   layout: 'abc' | 'azerty';
   scanMs: number;
   debounceMs: number;
@@ -34,7 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   speech: true,
   rate: 0.9,
   voiceURI: '',
-  theme: 'dark',
+  theme: 'light',
   showSpeak: true,
   showShow: true,
   personalWords: 'Théo\nMonique',

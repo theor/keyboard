@@ -36,8 +36,10 @@ export function Key({ label, onPress, class: cls, disabled, hold, letter, group,
 }
 
 // Text on top of every screen, with speak / show / clear / settings.
+// With onInput, the text is a field typed with the tablet's own keyboard.
 export function MessageBar(props: {
   text: string;
+  onInput?: (text: string) => void;
   // Not yet in the text: the guessed word, or what the held key would add.
   pending?: { typed: string; added?: string; rest: string };
   showSpeak: boolean;
@@ -48,24 +50,50 @@ export function MessageBar(props: {
   onSettings: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+  // Set while the change comes from the field, so the caret stays where it is.
+  const typing = useRef(false);
   useEffect(() => {
     ref.current?.scrollTo({ top: ref.current.scrollHeight });
+    // Guesses and deletes work on the end of the text, so the caret goes there.
+    const f = field.current;
+    if (f && !typing.current) {
+      f.setSelectionRange(f.value.length, f.value.length);
+      f.scrollTo({ top: f.scrollHeight });
+    }
+    typing.current = false;
   }, [props.text]);
+  useEffect(() => field.current?.focus(), [!!props.onInput]);
 
   return (
     <div class="bar" data-scan-row="90">
-      <div class="text" ref={ref}>
-        {props.text}
-        {props.pending && (
-          <span class="pending">
-            {props.pending.typed}
-            {props.pending.added && <mark class="added">{props.pending.added}</mark>}
-            <span class="caret" />
-            <span class="rest">{props.pending.rest}</span>
-          </span>
-        )}
-        {!props.pending && <span class="caret" />}
-      </div>
+      {props.onInput ? (
+        <textarea
+          class="text field"
+          data-native=""
+          ref={field}
+          value={props.text}
+          placeholder="Touchez ici pour écrire"
+          autocapitalize="sentences"
+          onInput={(e) => {
+            typing.current = true;
+            props.onInput!(e.currentTarget.value);
+          }}
+        />
+      ) : (
+        <div class="text" ref={ref}>
+          {props.text}
+          {props.pending && (
+            <span class="pending">
+              {props.pending.typed}
+              {props.pending.added && <mark class="added">{props.pending.added}</mark>}
+              <span class="caret" />
+              <span class="rest">{props.pending.rest}</span>
+            </span>
+          )}
+          {!props.pending && <span class="caret" />}
+        </div>
+      )}
       {props.showSpeak && (
         <Key class="bar-key" label="🔊 Parler" onPress={props.onSpeak} disabled={!(props.text.trim() || props.pending)} />
       )}
@@ -245,6 +273,8 @@ export function KeyboardScreen(props: {
   swipe?: boolean;
   // Set on the handwriting keyboard. `readings`: the last letter's, best first.
   write?: { pauseMs: number; onLetter: (strokes: Stroke[]) => void; readings: string; onPick: (c: string) => void };
+  // The tablet's keyboard is used: no keys of our own.
+  system?: boolean;
   onSwitch?: () => void;
   switchLabel?: string;
   onLetter: (c: string) => void;
@@ -265,7 +295,7 @@ export function KeyboardScreen(props: {
           <Key class="suggestion" label={w ?? ''} disabled={!w} onPress={() => w && props.onSuggestion(w)} />
         ))}
       </div>
-      {props.write ? (
+      {props.system ? null : props.write ? (
         <div class="write">
           <WritingPad pauseMs={props.write.pauseMs} onLetter={props.write.onLetter} />
           <div class="write-side">

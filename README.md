@@ -7,6 +7,7 @@ A French keyboard web app for someone in intensive care who can't speak and has 
 - **Group keyboard (setting):** 8 big keys (ABC, DEF…) around a space key. One touch per letter, and the word is guessed from the groups, as on old phones. *Épeler* brings back the A–Z keys for words it doesn't know.
 - **Swipe keyboard (setting):** the same groups, picked by sliding from anywhere toward one, so the finger doesn't have to hit a key. A touch without a slide is a space.
 - **Handwriting (setting):** write one letter at a time with a finger. Each letter is read on the tablet, offline, by a small neural network, and its 4 likeliest readings feed the word guess, so a badly read letter still leads to the right word.
+- **Tablet keyboard (setting):** the text becomes a field typed with Android's own keyboard. Gboard has a handwriting layout (Settings › System › Keyboard › Gboard › Languages › French › Handwriting, then switch with the 🌐 key). Our guesses and buttons stay on screen.
 - **Learning:** sentences that are spoken, shown or cleared teach the guesses this person's own words and habits. These stay on the tablet, and settings has a button to forget them.
 - **Touch rules for an unsteady hand:** a key fires when the finger lifts, so the user can slide onto the right key. Only the first finger counts, and repeat taps are ignored for a set time.
 - **Scanning mode:** rows, then keys, light up in turn. A touch anywhere picks.

@@ -65,6 +65,7 @@ export function SettingsScreen(props: {
             <option value="groups">Groupes de lettres (ABC, DEF…)</option>
             <option value="swipe">Glisser vers un groupe</option>
             <option value="handwriting">Écrire avec le doigt</option>
+            <option value="system">Clavier de la tablette (Gboard)</option>
           </select>
         </label>
         {s.keyboard === 'handwriting' && range('writePauseMs', 'Pause avant de lire la lettre', 300, 2500, 100, ' ms')}
@@ -85,6 +86,12 @@ export function SettingsScreen(props: {
           Écrire : on écrit une lettre à la fois, et elle est lue dès que le doigt reste levé le temps
           de la pause. Le mot est deviné, même si des lettres sont mal lues. En mode balayage, ce
           sont les touches A à Z.
+        </p>
+        <p class="hint">
+          Clavier de la tablette : toucher le texte ouvre le clavier Android. Pour écrire à la main
+          avec Gboard : Paramètres › Système › Clavier › Gboard › Langues › Français, cocher
+          « Écriture manuscrite », puis passer d’une disposition à l’autre avec le globe 🌐 du clavier.
+          En mode balayage, ce sont les touches A à Z.
         </p>
       </section>
 

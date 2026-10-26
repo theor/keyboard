@@ -107,6 +107,8 @@ export function App() {
   // Handwriting needs a finger on the pad, so scanning falls back to A–Z keys.
   const canWrite = settings.keyboard === 'handwriting' && !settings.scanning;
   const canSwitch = settings.keyboard === 'groups' || settings.keyboard === 'swipe' || canWrite;
+  // The tablet's keyboard also needs a finger, so scanning falls back to A–Z keys.
+  const system = settings.keyboard === 'system' && !settings.scanning && screen === 'keyboard';
   const groups = (settings.keyboard === 'groups' || settings.keyboard === 'swipe') && !spelling;
   const writing = canWrite && !spelling;
   const pendingKeys = groups ? keys : '';
@@ -170,9 +172,10 @@ export function App() {
           }}
         />
       ) : (
-        <div class="screen" data-scan-root={showBig ? undefined : ''}>
+        <div class={system ? 'screen system' : 'screen'} data-scan-root={showBig ? undefined : ''}>
           <MessageBar
             text={text}
+            onInput={system ? (t) => edit(t) : undefined}
             pending={pending}
             showSpeak={settings.speech && settings.showSpeak}
             showShow={settings.showShow}
@@ -182,6 +185,8 @@ export function App() {
             }}
             onShow={() => {
               learn(full);
+              // Closes the tablet's keyboard so it doesn't cover the text.
+              if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
               setShowBig(true);
             }}
             onClear={() => {
@@ -205,6 +210,7 @@ export function App() {
               layout={settings.layout}
               onGroup={groups ? (g) => edit(text, keys + g) : undefined}
               swipe={settings.keyboard === 'swipe' && !settings.scanning}
+              system={system}
               write={
                 writing
                   ? {
